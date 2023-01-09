@@ -81,6 +81,18 @@ def read_and_split_img_data(path_img, path_tab, path_splits, split, check_print 
     Y_new = np.array(Y_new)
     
     
+    # # Split data into training set and test set "old"
+    # X = np.squeeze(X)
+    # X = np.float32(X)
+
+    # rng = check_random_state(42)
+    # X_train, X_test, y_train, y_test = train_test_split(X, Y_eventtia, train_size=0.8, random_state=rng)
+    # X_test, X_valid, y_test, y_valid = train_test_split(X_test, y_test, train_size=0.5, random_state=rng)
+
+    # print(X_train.shape, X_valid.shape, X_test.shape)
+    # print(y_train.shape, y_valid.shape, y_test.shape)
+    
+    
     ## Split data into training set and test set "split" as defined by function
     X = np.squeeze(X)
     X = np.float32(X)
@@ -114,3 +126,15 @@ def read_and_split_img_data(path_img, path_tab, path_splits, split, check_print 
     )
     
     return (X_train, X_valid, X_test), (y_train, y_valid, y_test), results
+
+
+# def normalize(volume):
+#     """Normalize the volume"""
+#     min = np.min(volume)
+#     max = np.max(volume) 
+#     volume = (volume - min) / (max - min)
+#     volume = volume.astype("float32")
+#     return volume
+
+# X_in = np.array([normalize(img) for img in X_in])
+# print(X_in.shape, X_in.min(), X_in.max(), X_in.mean(), X_in.std())
