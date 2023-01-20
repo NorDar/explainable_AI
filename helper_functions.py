@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import tensorflow as tf
 
 from matplotlib import pyplot as plt
 from statsmodels.stats.proportion import proportion_confint
 from sklearn import metrics
 from sklearn.metrics import classification_report, confusion_matrix
+from scipy import special
 
 
 def bin_class_report(X_test,y_test, model):
@@ -41,6 +43,24 @@ def bin_class_report(X_test,y_test, model):
     print("Area under Curve (AUC) Probability :", np.around(AUC0,4))
     print("Negative Log-Likelihood :", np.around(NLL, 4))
 #     print(metrics.classification_report(y_test.argmax(axis=1), y_pred.argmax(axis =1)))
+
+def calc_metrics(y, p):
+#     NLL = np.mean(-special.xlogy(y, p) - special.xlogy(1-y, 1-p))
+    NLL = tf.keras.losses.binary_crossentropy(y, p)
+    AUC =  metrics.roc_auc_score(y, p)
+    AUCB =  metrics.roc_auc_score(y, np.round(p))
+    
+    cm = confusion_matrix(np.round(y), np.round(p))
+    nobs = sum(sum(cm))
+    count = sum([cm[0,0], cm[1,1]])
+    ACC = count/nobs
+    
+    print("\nPerformance on Test Set : ")
+    print("Accuracy:", np.around(ACC,4))
+    print("Area under Curve (AUC) Binary :", np.around(AUCB,4))
+    print("Area under Curve (AUC) Probability :", np.around(AUC,4))
+    print("Negative Log-Likelihood :", np.around(NLL, 4))
+    print("Confusion Matrix : \n", cm)
 
 
 def cal_plot_data_prep(y_pred, y_test):

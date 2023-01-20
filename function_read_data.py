@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 
 
-def read_and_split_img_data(path_img, path_tab, path_splits, split, check_print = True):
+# not efficient when data is big
+def read_and_split_img_data_andrea(path_img, path_tab, path_splits, split, check_print = True):     
+     
     ## read image data
     with h5py.File(path_img, "r") as h5:
     # with h5py.File(IMG_DIR2 + 'dicom-3d.h5', "r") as h5:
@@ -34,12 +36,12 @@ def read_and_split_img_data(path_img, path_tab, path_splits, split, check_print 
     andrea_splits.columns = andrea_splits.iloc[0]
     andrea_splits.drop(index=0, inplace=True)
     andrea_splits = andrea_splits.astype({'idx': 'int32', 'spl': 'int32'})
-    splitx = andrea_splits.loc[andrea_splits['spl']==split]
+    splitx = andrea_splits.loc[andrea_splits['spl']==split]        
     if check_print:
         print("split file shape in: ", splitx.shape)
         
     
-    ## extract X and Y and reduce to andrea size plus split into train, val, test
+    ## extract X and Y and split into train, val, test
     n = []
     for p in pat:
         if p in dat.p_id.values:
@@ -126,6 +128,24 @@ def read_and_split_img_data(path_img, path_tab, path_splits, split, check_print 
     )
     
     return (X_train, X_valid, X_test), (y_train, y_valid, y_test), results
+
+
+def split_data(id_tab, X, fold):
+    
+    # define indices of train, val, test
+    train_idx = id_tab[id_tab["fold" + str(fold)] == "train"].p_idx.to_numpy() - 1
+    valid_idx = id_tab[id_tab["fold" + str(fold)] == "val"].p_idx.to_numpy() - 1
+    test_idx = id_tab[id_tab["fold" + str(fold)] == "test"].p_idx.to_numpy() - 1
+    
+    # define data
+    X_train = X[train_idx]
+    y_train = id_tab["unfavorable"].to_numpy()[train_idx]
+    X_valid = X[valid_idx]
+    y_valid = id_tab["unfavorable"].to_numpy()[valid_idx]
+    X_test = X[test_idx]
+    y_test = id_tab["unfavorable"].to_numpy()[test_idx]
+    
+    return (X_train, X_valid, X_test), (y_train, y_valid, y_test)
 
 
 # def normalize(volume):
