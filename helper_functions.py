@@ -10,6 +10,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from scipy import special
 
 
+
 def bin_class_report(X_test,y_test, model):
     """
     modified classification report for binary output
