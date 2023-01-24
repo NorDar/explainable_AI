@@ -5,6 +5,8 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
+import functions_gradcam as gc
+
 def plot_gradcam(resized_img, heatmap, 
                  version = "overlay",
                  mode = "avg",
@@ -95,3 +97,87 @@ def plot_gradcam(resized_img, heatmap,
         
     if show:
         plt.show()
+        
+        
+# Plot function: Last conv layer, average over all conv layer and original
+def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_names, model_3d,
+                               layer_mode, heatmap_mode, save_path, save_name, save = True):
+    
+    if len(res_table["p_id"]) != res_table["p_id"].nunique():
+        add_testset = True
+    else:
+        add_testset = False
+    
+    for j in range(len(res_table)):   
+        plot_per_iter = 1
+        plot_at_end = 1
+        layer_iter = 1 #len(vis_layers)
+        num_rows = layer_iter*plot_per_iter + plot_per_iter + plot_at_end
+        width = 15
+
+        start_text = 0.08
+        end_text = 0.89
+        text_pos = np.flip(np.linspace(
+            start_text+(plot_at_end/num_rows)+0.2/(num_rows-plot_at_end), 
+            end_text-0.2/(num_rows-plot_at_end), 
+            layer_iter+1))
+
+        fig = plt.figure(figsize = (width,num_rows*width/3))
+
+        plt.gcf().text(0.14, end_text+3/num_rows/18, "p_id:        " + str(round(res_table["p_id"][j])), fontsize=16)
+        plt.gcf().text(0.14, end_text+2/num_rows/18, "true_mrs:    " + str(round(res_table["mrs"][j])), fontsize=16)
+        plt.gcf().text(0.14, end_text+1/num_rows/18, "true class:  " + str(res_table["unfavorable"][j]), fontsize=16)
+        plt.gcf().text(0.4, end_text+3/num_rows/18, "pred class:          " + str(res_table["y_pred_class"][j]), fontsize=16)
+        plt.gcf().text(0.4, end_text+2/num_rows/18, "pred prob (class 1): " + str(round(res_table["y_pred_trafo_avg"][j], 3)), fontsize=16)
+        plt.gcf().text(0.4, end_text+1/num_rows/18, "pred uncertainty:    " + str(round(res_table["y_pred_unc"][j], 3)), fontsize=16)
+
+
+        # last layer
+        plt.gcf().text(0.1, text_pos[0], "Layer: " + vis_layers[-1], 
+                       horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
+
+        heatmap, resized_img = gc.multi_models_grad_cam_3d(
+                img = res_images[j:j+1], 
+                cnn = model_3d,
+                model_names = res_model_names[j],
+                layers = vis_layers[-1],
+                mode = layer_mode)
+
+        plot_gradcam(resized_img, heatmap,
+                version = "overlay",
+                mode = heatmap_mode,
+                add_plot = (0,num_rows),
+                show = False)
+
+
+        # average over all layers
+        heatmap, resized_img = gc.multi_models_grad_cam_3d(
+                img = res_images[j:j+1], 
+                cnn = model_3d,
+                model_names = res_model_names[j],
+                layers = vis_layers,
+                mode = layer_mode)
+
+    #     print(layer_mode, "over all Layers")
+        plt.gcf().text(0.1, text_pos[-1], layer_mode + " over all Layers", 
+                       horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
+        plot_gradcam(resized_img, heatmap,
+                    version = "overlay",
+                    mode = heatmap_mode,
+                    add_plot = (1,num_rows),
+                    show = False)
+
+    #     print("Original")
+        plt.gcf().text(0.1, start_text+(plot_at_end/num_rows)/2, "Original", 
+                       horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
+        plot_gradcam(resized_img, heatmap,
+                    version = "original",
+                    mode = heatmap_mode,
+                    add_plot = (num_rows-1,num_rows),
+                    show = False)
+
+        plt.subplots_adjust(wspace=0.05, hspace=0.15)
+        if save:
+            plt.savefig(save_path + 'pat' + str(round(res_table["p_id"][j])) + '_' + 
+                        ("testset_" + res_table["p_id"][j] + "_" if testset else "") +
+                        save_name + '_last_and_all_layers_' + heatmap_mode + '.png')

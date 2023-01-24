@@ -71,8 +71,57 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean"):
     elif mode == "median":
         heatmap = np.median(h_l, axis = 0)
     elif mode == "max":
-        heatmap = np.max(h_l, axis = 0)
-        
+        heatmap = np.max(h_l, axis = 0)        
     
     return (heatmap, resized_img)
+
+# applies grad cams to multiple models (and layers)
+def multi_models_grad_cam_3d(img, cnn, model_names, layers, mode = "mean"):
+    valid_modes = ["mean", "median", "max"]
+    if mode not in valid_modes:
+        raise ValueError("multi_models_grad_cam_3d: mode must be one of %r." % valid_modes)
+        
+    if not isinstance(layers, list):
+        layers = [layers]
+    
+    h_l = []
+    for model_name in model_names:
+        cnn.load_weights(model_name)
+        heatmap, resized_img = multi_layers_grad_cam_3d(img = img, model_3d = cnn , layers = layers)
+        h_l.append(heatmap)
+    
+    h_l = np.array(h_l)
+    if mode == "mean":
+        heatmap = np.mean(h_l, axis = 0)
+    elif mode == "median":
+        heatmap = np.median(h_l, axis = 0)
+    elif mode == "max":
+        heatmap = np.max(h_l, axis = 0)
+        
+    return heatmap, resized_img
+
+
+# Prepares data in order to use multi_models_grad_cam_3d and plot_gradcams_last_avg_org
+def get_img_and_models(p_ids, results, pats, imgs, gen_model_name):
+    imgs = np.expand_dims(imgs, axis = -1)
+    
+    # extract table with all matches for p_ids
+    res_tab = results[results.p_id.isin(p_ids)].sort_values(["p_id", "test_split"]).reset_index()
+    
+    res_imgs = []
+    res_mod_names = []
+    
+    res_test_splits = list(res_tab.test_split)
+    for i, p_id in enumerate(list(res_tab.p_id)):
+        index = np.argwhere(pats == p_id).squeeze()
+        res_imgs.append(imgs[index])
+        
+        # generate model names
+        res_mod_names.append(
+            [gen_model_name(res_test_splits[i], j) for j in range(5)]
+        )
+            
+    return (res_tab, np.array(res_imgs), res_mod_names)
+
+  
     

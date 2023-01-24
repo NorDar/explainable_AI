@@ -13,7 +13,7 @@ def stroke_binary_3d(input_dim = (128, 128, 28,1),
     valid_layer_connection = ["flatten", "globalAveragePooling"]
     if layer_connection not in valid_layer_connection:
         raise ValueError("stroke_binary_3d: layer_connection must be one of %r." % valid_layer_connection)
-    valid_activation = ["sigmoid", "linear"]
+    valid_activation = ["sigmoid", "linear", "softmax"]
     if last_activation not in valid_activation:
         raise ValueError("stroke_binary_3d: last_activation must be one of %r." % valid_activation)
         
@@ -64,6 +64,8 @@ def stroke_binary_3d(input_dim = (128, 128, 28,1),
         out = layers.Dense(units=output_dim, activation = last_activation)(x) # sigmoid
     elif last_activation == list(valid_activation)[1]:
         out = layers.Dense(units=output_dim, activation = last_activation, use_bias = False)(x) # linear
+    elif last_activation == list(valid_activation)[2]:
+        out = layers.Dense(units=output_dim, activation = last_activation)(x) # softmax (output_dim must be at least 2)
     
     
     # Define the model.
