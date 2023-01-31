@@ -55,10 +55,13 @@ def grad_cam_3d(img, model_3d, layer):
 
 
 ### GradCam for multiple layers (average, median and max activations are possible)
-def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean"):
+def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean", normalize = True):
     valid_modes = ["mean", "median", "max"]
     if mode not in valid_modes:
         raise ValueError("multi_layers_grad_cam_3d: mode must be one of %r." % valid_modes)
+        
+    if not isinstance(layers, list):
+        layers = [layers]
     
     h_l = []
     for layer in layers:
@@ -71,15 +74,18 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean"):
     elif mode == "median":
         heatmap = np.median(h_l, axis = 0)
     elif mode == "max":
-        heatmap = np.max(h_l, axis = 0)        
+        heatmap = np.max(h_l, axis = 0) 
+        
+    if normalize:
+        heatmap = ((heatmap - heatmap.min())/heatmap.max())
     
     return (heatmap, resized_img)
 
 # applies grad cams to multiple models (and layers)
-def multi_models_grad_cam_3d(img, cnn, model_names, layers, mode = "mean"):
+def multi_models_grad_cam_3d(img, cnn, model_names, layers, model_mode = "mean", layer_mode = "mean", normalize = True):
     valid_modes = ["mean", "median", "max"]
-    if mode not in valid_modes:
-        raise ValueError("multi_models_grad_cam_3d: mode must be one of %r." % valid_modes)
+    if model_mode not in valid_modes:
+        raise ValueError("multi_models_grad_cam_3d: model_mode must be one of %r." % valid_modes)
         
     if not isinstance(layers, list):
         layers = [layers]
@@ -87,18 +93,27 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers, mode = "mean"):
     h_l = []
     for model_name in model_names:
         cnn.load_weights(model_name)
-        heatmap, resized_img = multi_layers_grad_cam_3d(img = img, model_3d = cnn , layers = layers)
+        heatmap, resized_img = multi_layers_grad_cam_3d(
+            img = img, model_3d = cnn , layers = layers, mode = layer_mode, normalize = normalize)
         h_l.append(heatmap)
     
     h_l = np.array(h_l)
-    if mode == "mean":
+    if model_mode == "mean":
         heatmap = np.mean(h_l, axis = 0)
-    elif mode == "median":
+    elif model_mode == "median":
         heatmap = np.median(h_l, axis = 0)
-    elif mode == "max":
+    elif model_mode == "max":
         heatmap = np.max(h_l, axis = 0)
         
-    return heatmap, resized_img
+    if normalize:
+        heatmap = ((heatmap - heatmap.min())/heatmap.max())
+        
+    target_shape = h_l.shape[:-1]
+    max_hm_slice = np.array(np.unravel_index(h_l.reshape(target_shape).reshape(len(h_l), -1).argmax(axis = 1), 
+                                             h_l.reshape(target_shape).shape[1:])).transpose()
+    hm_mean_std = np.sqrt(np.mean(np.var(h_l, axis = 0)))
+        
+    return heatmap, resized_img, max_hm_slice, hm_mean_std
 
 
 # Prepares data in order to use multi_models_grad_cam_3d and plot_gradcams_last_avg_org

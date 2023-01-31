@@ -11,6 +11,7 @@ def plot_gradcam(resized_img, heatmap,
                  version = "overlay",
                  mode = "avg",
                  slices = None,
+                 orig_max = False,
                  heatmap_threshold = None,
                  negative = False,
                  pic_size = (128,128),
@@ -20,6 +21,7 @@ def plot_gradcam(resized_img, heatmap,
     #       max => extracts slice with highest activation for heatmap and image
     #       def => extracts defined slices. if not defined by "slices", than extract middle slice of each view
     # slices: should be none or a tuple of shape 3. defines which slice to take when mode == "def"
+    # orig_max: if True and mode is "max" then the slice with the brightest point is selected
     # heatmap_threshold: if not None than should be between 0 and 1. At which proportion of the heatmap values, 
     #                     the heatmap should be set to 0. This can reduce noise of GradCam. "gradcam threshold"
     # add_plot: if not NULL, a tuple of (current_row, total_rows) must be given (current_row starts counting with 0)
@@ -40,10 +42,11 @@ def plot_gradcam(resized_img, heatmap,
     elif slices is not None and mode in ["avg", "max"]:
         warnings.warn("plot_gradcam: slices are defined but mode is not set to def. Ignore value of slice!")
         
-    if mode == "max":
+    if mode == "max" and orig_max == False:
         slices = np.unravel_index(heatmap.argmax(), heatmap.shape)
-    
-    
+    elif mode == "max" and orig_max == True:
+        slices = np.unravel_index(resized_img.argmax(), resized_img.shape)
+        
     if negative:
         resized_img = np.negative(resized_img)
 
@@ -80,7 +83,12 @@ def plot_gradcam(resized_img, heatmap,
 
     images = [img_ax, img_cor, img_sag]
     heatmaps = [map_ax, map_cor, map_sag]
-
+    
+    images_min = np.array(images).min()
+    images_max = np.array(images).max()
+    heatmaps_min = np.array(heatmaps).min()
+    heatmaps_max = np.array(heatmaps).max()
+    
     # For all three views plot desired version and add caption
     for i in range(3):
         if add_plot is None:
@@ -89,9 +97,9 @@ def plot_gradcam(resized_img, heatmap,
             ax = plt.subplot(add_plot[1], 3, (add_plot[0]*3)+(i+1))
             
         if version in ["overlay", "original"]:
-            ax.imshow(images[i], cmap='gray')
+            ax.imshow(images[i], cmap='gray', vmin = images_min, vmax = images_max)
         if version in ["overlay", "activation"]:
-            ax.imshow(heatmaps[i], alpha=0.4, cmap="jet")
+            ax.imshow(heatmaps[i], alpha=0.4, cmap="jet", vmin = heatmaps_min, vmax = heatmaps_max)
         ax.set_title(captions[i])
         plt.axis('off')
         
@@ -130,18 +138,24 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
         plt.gcf().text(0.4, end_text+3/num_rows/18, "pred class:          " + str(res_table["y_pred_class"][j]), fontsize=16)
         plt.gcf().text(0.4, end_text+2/num_rows/18, "pred prob (class 1): " + str(round(res_table["y_pred_trafo_avg"][j], 3)), fontsize=16)
         plt.gcf().text(0.4, end_text+1/num_rows/18, "pred uncertainty:    " + str(round(res_table["y_pred_unc"][j], 3)), fontsize=16)
+        if "heatmap_std_avg_layer" in res_table:
+            plt.gcf().text(0.66, end_text+3/num_rows/18, 
+                           "heatmap unc. avg layer: " + str(round(res_table["heatmap_unc_avg_layer"][j], 3)), fontsize=16)
+            plt.gcf().text(0.66, end_text+2/num_rows/18, 
+                           "heatmap unc. last layer: " + str(round(res_table["heatmap_unc_last_layer"][j], 3)), fontsize=16)
 
 
         # last layer
         plt.gcf().text(0.1, text_pos[0], "Layer: " + vis_layers[-1], 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
 
-        heatmap, resized_img = gc.multi_models_grad_cam_3d(
+        heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
                 img = res_images[j:j+1], 
                 cnn = model_3d,
                 model_names = res_model_names[j],
                 layers = vis_layers[-1],
-                mode = layer_mode)
+                model_mode = layer_mode,
+                layer_mode = layer_mode)
 
         plot_gradcam(resized_img, heatmap,
                 version = "overlay",
@@ -151,12 +165,13 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
 
 
         # average over all layers
-        heatmap, resized_img = gc.multi_models_grad_cam_3d(
+        heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
                 img = res_images[j:j+1], 
                 cnn = model_3d,
                 model_names = res_model_names[j],
                 layers = vis_layers,
-                mode = layer_mode)
+                model_mode = layer_mode,
+                layer_mode = layer_mode)
 
     #     print(layer_mode, "over all Layers")
         plt.gcf().text(0.1, text_pos[-1], layer_mode + " over all Layers", 
@@ -179,5 +194,5 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
         plt.subplots_adjust(wspace=0.05, hspace=0.15)
         if save:
             plt.savefig(save_path + 'pat' + str(round(res_table["p_id"][j])) + '_' + 
-                        ("testset_" + res_table["p_id"][j] + "_" if testset else "") +
+                        ("testset_" + res_table["p_id"][j] + "_" if add_testset else "") +
                         save_name + '_last_and_all_layers_' + heatmap_mode + '.png')
