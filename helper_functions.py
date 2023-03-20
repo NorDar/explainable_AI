@@ -17,6 +17,11 @@ def bin_class_report(X_test,y_test, model):
     """
     NLL, Acc, AUC0 = model.evaluate( x=X_test, y=y_test, verbose=0)
     y_pred = model.predict(X_test)
+    
+    if y_pred.shape[1] == 2:
+        y_test = y_test[:,1]
+        y_pred = y_pred[:,1]
+    
     # cm , AUC
     cm = confusion_matrix(np.round(y_test), np.round(y_pred))
     AUC =  metrics.roc_auc_score(np.round(y_test), np.round(y_pred))
@@ -44,6 +49,7 @@ def bin_class_report(X_test,y_test, model):
     print("Area under Curve (AUC) Probability :", np.around(AUC0,4))
     print("Negative Log-Likelihood :", np.around(NLL, 4))
 #     print(metrics.classification_report(y_test.argmax(axis=1), y_pred.argmax(axis =1)))
+    return (AUC, NLL, sens, spec)
 
 def calc_metrics(y, p):
 #     NLL = np.mean(-special.xlogy(y, p) - special.xlogy(1-y, 1-p))

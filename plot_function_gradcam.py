@@ -109,7 +109,12 @@ def plot_gradcam(resized_img, heatmap,
         
 # Plot function: Last conv layer, average over all conv layer and original
 def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_names, model_3d,
-                               layer_mode, heatmap_mode, save_path, save_name, save = True):
+                               layer_mode, heatmap_mode, save_path, save_name, save = True, hm_of_pred = True):
+    
+    if "sigmoid" in str(model_3d.layers[-1].activation):
+        pred_idx = 0
+    elif "softmax" in str(model_3d.layers[-1].activation):
+        pred_idx = 1
     
     if len(res_table["p_id"]) != res_table["p_id"].nunique():
         add_testset = True
@@ -135,7 +140,8 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
         plt.gcf().text(0.14, end_text+3/num_rows/18, "p_id:        " + str(round(res_table["p_id"][j])), fontsize=16)
         plt.gcf().text(0.14, end_text+2/num_rows/18, "true_mrs:    " + str(round(res_table["mrs"][j])), fontsize=16)
         plt.gcf().text(0.14, end_text+1/num_rows/18, "true class:  " + str(res_table["unfavorable"][j]), fontsize=16)
-        plt.gcf().text(0.4, end_text+3/num_rows/18, "pred class:          " + str(res_table["y_pred_class"][j]), fontsize=16)
+        plt.gcf().text(0.4, end_text+3/num_rows/18, "pred class:          " + str(res_table["y_pred_class"][j]), fontsize=16,
+                      fontweight = "bold", color = ("red" if res_table["pred_correct"][j] == False else "black"))
         plt.gcf().text(0.4, end_text+2/num_rows/18, "pred prob (class 1): " + str(round(res_table["y_pred_trafo_avg"][j], 3)), fontsize=16)
         plt.gcf().text(0.4, end_text+1/num_rows/18, "pred uncertainty:    " + str(round(res_table["y_pred_unc"][j], 3)), fontsize=16)
         if "heatmap_std_avg_layer" in res_table:
@@ -143,7 +149,12 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                            "heatmap unc. avg layer: " + str(round(res_table["heatmap_unc_avg_layer"][j], 3)), fontsize=16)
             plt.gcf().text(0.66, end_text+2/num_rows/18, 
                            "heatmap unc. last layer: " + str(round(res_table["heatmap_unc_last_layer"][j], 3)), fontsize=16)
-
+        
+        # check predicted class
+        if res_table["y_pred_class"][j] == 0 and hm_of_pred == True:
+            invert_last_layer = "last"
+        else:
+            invert_last_layer = "none"
 
         # last layer
         plt.gcf().text(0.1, text_pos[0], "Layer: " + vis_layers[-1], 
@@ -155,7 +166,9 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                 model_names = res_model_names[j],
                 layers = vis_layers[-1],
                 model_mode = layer_mode,
-                layer_mode = layer_mode)
+                layer_mode = layer_mode,
+                pred_index = pred_idx,
+                invert_hm = invert_last_layer)
 
         plot_gradcam(resized_img, heatmap,
                 version = "overlay",
@@ -171,7 +184,9 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                 model_names = res_model_names[j],
                 layers = vis_layers,
                 model_mode = layer_mode,
-                layer_mode = layer_mode)
+                layer_mode = layer_mode,
+                pred_index = pred_idx,
+                invert_hm = invert_last_layer)
 
     #     print(layer_mode, "over all Layers")
         plt.gcf().text(0.1, text_pos[-1], layer_mode + " over all Layers", 
@@ -187,6 +202,7 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
         plot_gradcam(resized_img, heatmap,
                     version = "original",
+                    orig_max = True,
                     mode = heatmap_mode,
                     add_plot = (num_rows-1,num_rows),
                     show = False)
