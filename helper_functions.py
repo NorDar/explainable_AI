@@ -9,6 +9,30 @@ from sklearn import metrics
 from sklearn.metrics import classification_report, confusion_matrix
 from scipy import special
 
+def compute_auc_ci(y_true, y_pred, n_bootstraps=1000, rng_seed=42, alpha=0.05):
+    """Computes the AUC and its confidence interval using bootstrapping."""
+    
+    bootstrapped_scores = []
+
+    rng = np.random.RandomState(rng_seed)
+    for i in range(n_bootstraps):
+        # bootstrap by sampling with replacement on the prediction indices
+        indices = rng.randint(0, len(y_pred), len(y_pred))
+        if len(np.unique(y_true[indices])) < 2:
+            # We need at least one positive and one negative sample for ROC AUC
+            # to be defined: reject the sample
+            continue
+
+        score = metrics.roc_auc_score(y_true[indices], y_pred[indices])
+        bootstrapped_scores.append(score)
+        
+    sorted_scores = np.array(bootstrapped_scores)
+    sorted_scores.sort()
+    
+    confidence_lower = sorted_scores[int(alpha/2 * len(sorted_scores))]
+    confidence_upper = sorted_scores[int(1-alpha/2 * len(sorted_scores))]
+    
+    return (confidence_lower, confidence_upper)
 
 
 def bin_class_report(X_test,y_test, model):
@@ -25,6 +49,9 @@ def bin_class_report(X_test,y_test, model):
     # cm , AUC
     cm = confusion_matrix(np.round(y_test), np.round(y_pred))
     AUC =  metrics.roc_auc_score(np.round(y_test), np.round(y_pred))
+    # AUC CI
+    AUC_CI = compute_auc_ci(np.round(y_test), np.round(y_pred))
+    AUC0_CI = compute_auc_ci(y_test, y_pred)
     #acc
     nobs = sum(sum(cm))
     count = sum([cm[0,0], cm[1,1]])
@@ -45,11 +72,12 @@ def bin_class_report(X_test,y_test, model):
     print("\nAccuracy    [95% Conf.] :", np.around(Acc,4),np.around([acc_ci_low, acc_ci_upp],4))
     print("Sensitivity [95% Conf.] :", np.around(sens,4), np.around([sens_ci_low, sens_ci_upp],4))
     print("Specificity [95% Conf.] :", np.around(spec,4), np.around([spec_ci_low, spec_ci_upp],4))
-    print("\nArea under Curve (AUC) Binary :", np.around(AUC,4))
-    print("Area under Curve (AUC) Probability :", np.around(AUC0,4))
+    print("\nArea under Curve (AUC) Binary [95% Conf.]:", np.around(AUC,4),np.around([AUC_CI[0], AUC_CI[1]],4))
+    print("Area under Curve (AUC) Probability [95% Conf.]:", np.around(AUC0,4),np.around([AUC0_CI[0], AUC0_CI[1]],4))
     print("Negative Log-Likelihood :", np.around(NLL, 4))
 #     print(metrics.classification_report(y_test.argmax(axis=1), y_pred.argmax(axis =1)))
     return (AUC, NLL, sens, spec)
+
 
 def calc_metrics(y, p):
 #     NLL = np.mean(-special.xlogy(y, p) - special.xlogy(1-y, 1-p))
