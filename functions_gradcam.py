@@ -5,7 +5,8 @@ from skimage.transform import resize
 from matplotlib import pyplot as plt
 
 ### GradCam for specific layer
-def grad_cam_3d(img, model_3d, layer, pred_index=None, inv_hm=False):
+def grad_cam_3d(img, model_3d, layer, pred_index=None, 
+                inv_hm=False, gcplusplus=True):
     # pred_index: output channel when sigmoid should always be 0, when softmax 0 favorable, 1 unfavorable
     
     # First, we create a MODEL that maps the input image to the activations
@@ -16,7 +17,7 @@ def grad_cam_3d(img, model_3d, layer, pred_index=None, inv_hm=False):
     # with respect to the activations of the last conv layer
     with tf.GradientTape() as tape:
         conv_outputs, predictions = grad_model(img)
-        if pred_index is None:
+        if pred_index is None or model_3d.layers[-1].get_config()["activation"] == "sigmoid":
             pred_index = tf.argmax(predictions[0])
         class_channel = predictions[:, pred_index] # when sigmoid, pred_index must be None or 0
 
@@ -51,7 +52,13 @@ def grad_cam_3d(img, model_3d, layer, pred_index=None, inv_hm=False):
     # For visualization purpose, we will also normalize the heatmap between 0 & 1
     if inv_hm:
         heatmap = heatmap * (-1)
-    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+    if gcplusplus:
+        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+    else:
+        # normalize heatmap between -1 and 1 (absolute max is then -1 or 1)
+        heatmap_min_max = [tf.math.reduce_min(heatmap), tf.math.reduce_max(heatmap)]
+        heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
+        heatmap = heatmap / heatmap_abs_max
     heatmap = heatmap.numpy()
     resized_img = img.reshape(img.shape[1:])
     
@@ -60,28 +67,49 @@ def grad_cam_3d(img, model_3d, layer, pred_index=None, inv_hm=False):
 
 
 ### GradCam for multiple layers (average, median and max activations are possible)
-def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean", normalize = True, pred_index=None, invert_hm="none"):
+def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean", 
+                             normalize = True, pred_index=None, 
+                             invert_hm="none", gcpp_hm="last"):
     valid_modes = ["mean", "median", "max"]
     if mode not in valid_modes:
         raise ValueError("multi_layers_grad_cam_3d: mode must be one of %r." % valid_modes)
     valid_hm_inverts = ["none", "all", "last"]
     if invert_hm not in valid_hm_inverts:
         raise ValueError("multi_layers_grad_cam_3d: invert_hm must be one of %r." % valid_hm_inverts)
+    valid_hm_gcpp = ["all", "none", "last"]
+    # all: all layers use gradcam++, 
+    # none: no layer uses gradcam++, 
+    # last: only last layer uses gradcam++
+    if gcpp_hm not in valid_hm_gcpp:
+        raise ValueError("multi_layers_grad_cam_3d: gcpp_hm must be one of %r." % valid_hm_gcpp)
         
     if not isinstance(layers, list):
         layers = [layers]
     
     h_l = []
+    gcpp = True
     for i, layer in enumerate(layers):
+        # check if gradcam++ should be used
+        if (i != len(layers)-1 and gcpp_hm == "last") or gcpp_hm == "none":
+            gcpp = False
+        
         if (i == len(layers)-1 and invert_hm == "last") or invert_hm == "all":
-            heatmap, resized_img = grad_cam_3d(img = img, model_3d = model_3d , layer = layer, 
-                                               pred_index=pred_index, inv_hm=True)
+            heatmap, resized_img = grad_cam_3d(
+                img = img, model_3d = model_3d , layer = layer, 
+                pred_index=pred_index, inv_hm=True, gcplusplus=gcpp)
         else:
-            heatmap, resized_img = grad_cam_3d(img = img, model_3d = model_3d , layer = layer, 
-                                               pred_index=pred_index, inv_hm=False)
+            heatmap, resized_img = grad_cam_3d(
+                img = img, model_3d = model_3d , layer = layer, 
+                pred_index=pred_index, inv_hm=False, gcplusplus=gcpp)
         h_l.append(heatmap)
-    
+        
     h_l = np.array(h_l)
+    
+    if gcpp_hm == "last":
+        # if all, then everything is already positive
+        # if none, then absolute is not applied
+        h_l = np.abs(h_l)
+    
     if mode == "mean":
         heatmap = np.mean(h_l, axis = 0)
     elif mode == "median":
@@ -89,14 +117,23 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean", normalize = T
     elif mode == "max":
         heatmap = np.max(h_l, axis = 0) 
         
-    if normalize and heatmap.max() != 0:
+    if normalize and gcpp_hm in ["last", "all"] and heatmap.max() != 0:
         heatmap = ((heatmap - heatmap.min())/heatmap.max())
+    elif normalize and gcpp_hm == "none" and heatmap.max() != 0:
+        heatmap_min_max = [tf.math.reduce_min(heatmap), tf.math.reduce_max(heatmap)]
+        heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
+        heatmap = heatmap / heatmap_abs_max
+        heatmap = heatmap.numpy()
+    else:
+        raise ValueError("Something went wrong with normalization in multi_layers_grad_cam_3d")
     
     return (heatmap, resized_img)
 
 # applies grad cams to multiple models (and layers)
-def multi_models_grad_cam_3d(img, cnn, model_names, layers, model_mode = "mean", layer_mode = "mean", normalize = True, pred_index=None,
-                             invert_hm="none"):
+def multi_models_grad_cam_3d(img, cnn, model_names, layers, 
+                             model_mode = "mean", layer_mode = "mean", 
+                             normalize = True, pred_index=None,
+                             invert_hm="none", gcpp_hm="last"):
     valid_modes = ["mean", "median", "max"]
     if model_mode not in valid_modes:
         raise ValueError("multi_models_grad_cam_3d: model_mode must be one of %r." % valid_modes)
@@ -120,8 +157,15 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers, model_mode = "mean",
     elif model_mode == "max":
         heatmap = np.max(h_l, axis = 0)
         
-    if normalize and heatmap.max() != 0:
+    if normalize and gcpp_hm in ["last", "all"] and heatmap.max() != 0:
         heatmap = ((heatmap - heatmap.min())/heatmap.max())
+    elif normalize and gcpp_hm == "none" and heatmap.max() != 0:
+        heatmap_min_max = [tf.math.reduce_min(heatmap), tf.math.reduce_max(heatmap)]
+        heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
+        heatmap = heatmap / heatmap_abs_max
+        heatmap = heatmap.numpy()
+    else:
+        raise ValueError("Something went wrong with normalization in multi_models_grad_cam_3d")
         
     target_shape = h_l.shape[:-1]
     max_hm_slice = np.array(np.unravel_index(h_l.reshape(target_shape).reshape(len(h_l), -1).argmax(axis = 1), 
