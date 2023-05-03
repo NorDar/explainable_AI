@@ -1,3 +1,16 @@
+# folders
+__pycache__/
+.ipynb_checkpoints/
+data/
+pictures/
+weights/
+
+# files
+*.jpg
+
+
+# Standard ignore for python projects ------------------------------------------
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

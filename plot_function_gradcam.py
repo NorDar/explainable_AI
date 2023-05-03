@@ -16,7 +16,9 @@ def plot_gradcam(resized_img, heatmap,
                  negative = False,
                  pic_size = (128,128),
                  show = True,
-                 add_plot = None):
+                 add_plot = None,
+                 hm_positive = True,
+                 hm_colormap = "jet"):
     # mode: avg => averages (mean) of heatmaps and image. avg_heatmap_correction can be applied for heatmap average
     #       max => extracts slice with highest activation for heatmap and image
     #       def => extracts defined slices. if not defined by "slices", than extract middle slice of each view
@@ -25,6 +27,7 @@ def plot_gradcam(resized_img, heatmap,
     # heatmap_threshold: if not None than should be between 0 and 1. At which proportion of the heatmap values, 
     #                     the heatmap should be set to 0. This can reduce noise of GradCam. "gradcam threshold"
     # add_plot: if not NULL, a tuple of (current_row, total_rows) must be given (current_row starts counting with 0)
+    # hm_positive: if True only positive Values will be shown (should be normal if gradcam++) 
     
     valid_versions = ["overlay", "original", "activation"]
     valid_modes = ["avg", "max", "def"]
@@ -41,7 +44,7 @@ def plot_gradcam(resized_img, heatmap,
         slices = (64,64,14)
     elif slices is not None and mode in ["avg", "max"]:
         warnings.warn("plot_gradcam: slices are defined but mode is not set to def. Ignore value of slice!")
-        
+
     if mode == "max" and orig_max == False:
         slices = np.unravel_index(heatmap.argmax(), heatmap.shape)
     elif mode == "max" and orig_max == True:
@@ -86,8 +89,15 @@ def plot_gradcam(resized_img, heatmap,
     
     images_min = np.array(images).min()
     images_max = np.array(images).max()
-    heatmaps_min = np.array(heatmaps).min()
-    heatmaps_max = np.array(heatmaps).max()
+    
+    if hm_positive:
+        heatmaps_min = np.array(heatmaps).min()
+        heatmaps_max = np.array(heatmaps).max()
+    else:
+        abs_max = np.abs(np.array(heatmaps)).max()
+        heatmaps_min = -abs_max
+        heatmaps_max = abs_max
+        
     
     # For all three views plot desired version and add caption
     for i in range(3):
@@ -99,7 +109,7 @@ def plot_gradcam(resized_img, heatmap,
         if version in ["overlay", "original"]:
             ax.imshow(images[i], cmap='gray', vmin = images_min, vmax = images_max)
         if version in ["overlay", "activation"]:
-            ax.imshow(heatmaps[i], alpha=0.4, cmap="jet", vmin = heatmaps_min, vmax = heatmaps_max)
+            ax.imshow(heatmaps[i], alpha=0.4, cmap=hm_colormap, vmin = heatmaps_min, vmax = heatmaps_max)
         ax.set_title(captions[i])
         plt.axis('off')
         

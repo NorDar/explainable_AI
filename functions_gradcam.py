@@ -69,7 +69,7 @@ def grad_cam_3d(img, model_3d, layer, pred_index=None,
 ### GradCam for multiple layers (average, median and max activations are possible)
 def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean", 
                              normalize = True, pred_index=None, 
-                             invert_hm="none", gcpp_hm="last"):
+                             invert_hm="none", gcpp_hm="all"):
     valid_modes = ["mean", "median", "max"]
     if mode not in valid_modes:
         raise ValueError("multi_layers_grad_cam_3d: mode must be one of %r." % valid_modes)
@@ -124,7 +124,7 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
         heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
         heatmap = heatmap / heatmap_abs_max
         heatmap = heatmap.numpy()
-    else:
+    elif not normalize:
         raise ValueError("Something went wrong with normalization in multi_layers_grad_cam_3d")
     
     return (heatmap, resized_img)
@@ -146,7 +146,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
         cnn.load_weights(model_name)
         heatmap, resized_img = multi_layers_grad_cam_3d(
             img = img, model_3d = cnn , layers = layers, mode = layer_mode, normalize = normalize, 
-            pred_index=pred_index, invert_hm=invert_hm)
+            pred_index=pred_index, invert_hm=invert_hm, gcpp_hm=gcpp_hm)
         h_l.append(heatmap)
     
     h_l = np.array(h_l)
@@ -164,7 +164,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
         heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
         heatmap = heatmap / heatmap_abs_max
         heatmap = heatmap.numpy()
-    else:
+    elif not normalize:
         raise ValueError("Something went wrong with normalization in multi_models_grad_cam_3d")
         
     target_shape = h_l.shape[:-1]
