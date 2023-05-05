@@ -133,17 +133,21 @@ def read_and_split_img_data_andrea(path_img, path_tab, path_splits, split, check
 def split_data(id_tab, X, fold):
     
     # define indices of train, val, test
-    train_idx = id_tab[id_tab["fold" + str(fold)] == "train"].p_idx.to_numpy() - 1
-    valid_idx = id_tab[id_tab["fold" + str(fold)] == "val"].p_idx.to_numpy() - 1
-    test_idx = id_tab[id_tab["fold" + str(fold)] == "test"].p_idx.to_numpy() - 1
+    train_idx_tab = id_tab[id_tab["fold" + str(fold)] == "train"]
+    valid_idx_tab = id_tab[id_tab["fold" + str(fold)] == "val"]
+    test_idx_tab = id_tab[id_tab["fold" + str(fold)] == "test"]
+    
+    # for X and y it is not the same, because X is defined for all valid patients,
+    # but id_tab is only defined for patients with a stroke (no tia) in V3.
+    # In V0, V1 and V2 X and id_tab are the same.
     
     # define data
-    X_train = X[train_idx]
-    y_train = id_tab["unfavorable"].to_numpy()[train_idx]
-    X_valid = X[valid_idx]
-    y_valid = id_tab["unfavorable"].to_numpy()[valid_idx]
-    X_test = X[test_idx]
-    y_test = id_tab["unfavorable"].to_numpy()[test_idx]
+    X_train = X[train_idx_tab.p_idx.to_numpy() - 1]
+    y_train = id_tab["unfavorable"].to_numpy()[train_idx_tab.index.to_numpy()]
+    X_valid = X[valid_idx_tab.p_idx.to_numpy() - 1]
+    y_valid = id_tab["unfavorable"].to_numpy()[valid_idx_tab.index.to_numpy()]
+    X_test = X[test_idx_tab.p_idx.to_numpy() - 1]
+    y_test = id_tab["unfavorable"].to_numpy()[test_idx_tab.index.to_numpy()]
     
     return (X_train, X_valid, X_test), (y_train, y_valid, y_test)
 
