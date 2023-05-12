@@ -3,7 +3,9 @@ import skimage
 
 import numpy as np
 
+import matplotlib
 from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import functions_gradcam as gc
 
@@ -18,16 +20,20 @@ def plot_gradcam(resized_img, heatmap,
                  show = True,
                  add_plot = None,
                  hm_positive = True,
-                 hm_colormap = "jet"):
+                 hm_colormap = "jet",
+                 colorbar = False,
+                 slice_line = False,
+                 return_fig = False):
     # mode: avg => averages (mean) of heatmaps and image. avg_heatmap_correction can be applied for heatmap average
     #       max => extracts slice with highest activation for heatmap and image
     #       def => extracts defined slices. if not defined by "slices", than extract middle slice of each view
-    # slices: should be none or a tuple of shape 3. defines which slice to take when mode == "def"
+    # slices: should be none or a tuple of shape 3. defines which slice to take when mode == "def" (cor, sag, ax)
     # orig_max: if True and mode is "max" then the slice with the brightest point is selected
     # heatmap_threshold: if not None than should be between 0 and 1. At which proportion of the heatmap values, 
     #                     the heatmap should be set to 0. This can reduce noise of GradCam. "gradcam threshold"
     # add_plot: if not NULL, a tuple of (current_row, total_rows) must be given (current_row starts counting with 0)
     # hm_positive: if True only positive Values will be shown (should be normal if gradcam++) 
+    # slice_line: if True a line will be drawn in the image to show which slice is selected
     
     valid_versions = ["overlay", "original", "activation"]
     valid_modes = ["avg", "max", "def"]
@@ -100,6 +106,10 @@ def plot_gradcam(resized_img, heatmap,
         
     
     # For all three views plot desired version and add caption
+    if slice_line and mode != "avg":
+        h_line = (0,2,2)
+        v_line = (1,1,0)
+        
     for i in range(3):
         if add_plot is None:
             ax = plt.subplot(1,3, i+1)
@@ -110,11 +120,38 @@ def plot_gradcam(resized_img, heatmap,
             ax.imshow(images[i], cmap='gray', vmin = images_min, vmax = images_max)
         if version in ["overlay", "activation"]:
             ax.imshow(heatmaps[i], alpha=0.4, cmap=hm_colormap, vmin = heatmaps_min, vmax = heatmaps_max)
+        if slice_line and mode != "avg":
+            ax.axhline(y=slices[h_line[i]] if i == 0 else
+                       heatmap.shape[0]-np.round(slices[h_line[i]]*heatmap.shape[0]/heatmap.shape[2]), 
+                       color='r', linestyle='-')
+            ax.axvline(x=slices[v_line[i]] if i != 2 else 
+                       heatmap.shape[1]-slices[v_line[i]], 
+                       color='r', linestyle='-')
         ax.set_title(captions[i])
         plt.axis('off')
+    
+    if colorbar and version != "original":
+        axins = inset_axes(
+            ax,
+            width="5%",  # width: 5% of parent_bbox width
+            height="100%",  # height: 50%
+            loc="lower left",
+            bbox_to_anchor=(1.01, 0., 1, 1),
+            bbox_transform=ax.transAxes,
+            borderpad=0,
+        )
+        fig.colorbar(
+            matplotlib.cm.ScalarMappable(
+                norm=matplotlib.colors.Normalize(vmin=heatmaps_min, vmax=heatmaps_max, clip=False), 
+                cmap=hm_colormap), 
+            cax=axins,
+            label='',
+            ticks=np.trunc(np.linspace(heatmaps_min, heatmaps_max, 5)*100)/100)
         
     if show:
         plt.show()
+    if return_fig:
+        return fig, ax
         
         
 # Plot function: Last conv layer, average over all conv layer and original

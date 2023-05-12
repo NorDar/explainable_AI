@@ -52,6 +52,7 @@ def grad_cam_3d(img, model_3d, layer, pred_index=None,
     # For visualization purpose, we will also normalize the heatmap between 0 & 1
     if inv_hm:
         heatmap = heatmap * (-1)
+    
     if gcplusplus:
         heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
     else:
@@ -87,11 +88,12 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
         layers = [layers]
     
     h_l = []
-    gcpp = True
     for i, layer in enumerate(layers):
+        
         # check if gradcam++ should be used
+        gcpp = True
         if (i != len(layers)-1 and gcpp_hm == "last") or gcpp_hm == "none":
-            gcpp = False
+            gcpp = False 
         
         if (i == len(layers)-1 and invert_hm == "last") or invert_hm == "all":
             heatmap, resized_img = grad_cam_3d(
