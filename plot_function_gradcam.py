@@ -140,7 +140,7 @@ def plot_gradcam(resized_img, heatmap,
             bbox_transform=ax.transAxes,
             borderpad=0,
         )
-        fig.colorbar(
+        plt.colorbar(
             matplotlib.cm.ScalarMappable(
                 norm=matplotlib.colors.Normalize(vmin=heatmaps_min, vmax=heatmaps_max, clip=False), 
                 cmap=hm_colormap), 
@@ -259,3 +259,104 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
             plt.savefig(save_path + 'pat' + str(round(res_table["p_id"][j])) + '_' + 
                         ("testset_" + res_table["p_id"][j] + "_" if add_testset else "") +
                         save_name + '_last_and_all_layers_' + heatmap_mode + '.png')
+            
+# Plot function:  Last conv layer, average over all conv layer and original
+def plot_gradcams_avg_max_org(pat_data, res_table, vis_layers, res_images, res_model_names, model_3d,
+                               layer_mode, cmap, hm_positive,
+                               save_path, save_name, save = True, hm_of_pred = True):
+    
+    if "sigmoid" in str(model_3d.layers[-1].activation):
+        pred_idx = 0
+    elif "softmax" in str(model_3d.layers[-1].activation):
+        pred_idx = 1
+    
+    if len(res_table["p_id"]) != res_table["p_id"].nunique():
+        add_testset = True
+    else:
+        add_testset = False
+    
+    for j in range(len(res_table)):   
+        plot_per_iter = 1
+        plot_at_end = 1
+        layer_iter = 1 #len(vis_layers)
+        num_rows = layer_iter*plot_per_iter + plot_per_iter + plot_at_end
+        width = 15
+
+        start_text = 0.08
+        end_text = 0.89
+        text_pos = np.flip(np.linspace(
+            start_text+(plot_at_end/num_rows)+0.2/(num_rows-plot_at_end), 
+            end_text-0.2/(num_rows-plot_at_end), 
+            layer_iter+1))
+
+        fig = plt.figure(figsize = (width,num_rows*width/3))
+
+        plt.gcf().text(0.14, end_text+3/num_rows/18, "p_id: " + str(round(res_table["p_id"][j])), fontsize=16)
+        plt.gcf().text(0.14, end_text+2/num_rows/18, "true_mrs: " + str(round(res_table["mrs"][j])), fontsize=16)
+        plt.gcf().text(0.14, end_text+1/num_rows/18, "age: " + str(
+            pat_data.age[pat_data["p_id"] == res_table["p_id"][j]].values[0]), fontsize=16)
+        plt.gcf().text(0.4, end_text+3/num_rows/18, "true class: " + str(res_table["unfavorable"][j]), fontsize=16)
+        plt.gcf().text(0.4, end_text+2/num_rows/18, "pred class: " + str(res_table["y_pred_class"][j]), fontsize=16,
+                      fontweight = "bold", color = ("red" if res_table["pred_correct"][j] == False else "black"))
+        plt.gcf().text(0.4, end_text+1/num_rows/18, "pred prob (class 1): " + str(round(res_table["y_pred_trafo_avg"][j], 3)), fontsize=16)
+        plt.gcf().text(0.66, end_text+3/num_rows/18, "pred uncertainty: " + str(round(res_table["y_pred_unc"][j], 3)), fontsize=16)
+        if "heatmap_unc_last_layer" in res_table:
+            plt.gcf().text(0.66, end_text+2/num_rows/18, 
+                           "heatmap unc. last layer: " + str(round(res_table["heatmap_unc_last_layer"][j], 3)), fontsize=16)
+        
+        # check predicted class
+        if res_table["y_pred_class"][j] == 0 and hm_of_pred == True:
+            invert_last_layer = "last"
+        else:
+            invert_last_layer = "none"
+
+        # last layer
+        plt.gcf().text(0.1, text_pos[0], "Average Heatmap", 
+                       horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
+
+        heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
+                img = res_images[j:j+1], 
+                cnn = model_3d,
+                model_names = res_model_names[j],
+                layers = vis_layers,
+                model_mode = layer_mode,
+                layer_mode = layer_mode,
+                pred_index = pred_idx,
+                invert_hm = invert_last_layer)
+
+        plot_gradcam(resized_img, heatmap,
+                version = "overlay",
+                mode = "avg",
+                hm_colormap=cmap,
+                hm_positive=hm_positive,
+                colorbar=True,
+                add_plot = (0,num_rows),
+                show=False)
+
+        plt.gcf().text(0.1, text_pos[-1], "Max Heatmap Slice", 
+                       horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
+        plot_gradcam(resized_img, heatmap,
+                    version = "overlay",
+                    mode = "max",
+                    hm_colormap=cmap,
+                    hm_positive=hm_positive,
+                    colorbar=True,
+                    add_plot = (1,num_rows),
+                    show = False)
+
+        plt.gcf().text(0.1, start_text+(plot_at_end/num_rows)/2, "Original", 
+                       horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
+        plot_gradcam(resized_img, heatmap,
+                    version = "original",
+                    mode = "max",
+                    orig_max = True,
+                    hm_colormap=cmap,
+                    hm_positive=hm_positive,
+                    add_plot = (num_rows-1,num_rows),
+                    show = False)
+
+        plt.subplots_adjust(wspace=0.05, hspace=0.15)
+        if save:
+            plt.savefig(save_path + 'pat' + str(round(res_table["p_id"][j])) + '_' + 
+                        ("testset_" + res_table["p_id"][j] + "_" if add_testset else "") +
+                        save_name + '_last_layer_avg_max_orig.png')
