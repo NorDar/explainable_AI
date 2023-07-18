@@ -73,6 +73,37 @@ def stroke_binary_3d(input_dim = (128, 128, 28,1),
     
     return model_3d
 
+def model_setup(version, input_dim = (128, 128, 28, 1)):
+
+    if "sigmoid" in version or "andrea_split" in version:
+        last_activation = "sigmoid"
+        output_dim = 1
+        LOSS = "binary_crossentropy"
+    elif "softmax" in version:
+        last_activation = "softmax"
+        output_dim = 2
+        LOSS = tf.keras.losses.categorical_crossentropy
+        
+    if version.endswith("f"):
+        layer_connection = "flatten"
+    else:
+        layer_connection = "globalAveragePooling"
+        
+    return input_dim, output_dim, LOSS, layer_connection, last_activation
+
+def set_generate_model_name(model_version, layer_connection, last_activation, path):
+    def generate_model_name(which_split, model_nr):
+        if layer_connection == "globalAveragePooling":
+            return (path + "3d_cnn_binary_model_split" + str(which_split) + 
+                    "_unnormalized_avg_layer_paper_model_" + last_activation + 
+                    "_activation_"  + str(model_version) + str(model_nr) + ".h5")
+        elif layer_connection == "flatten":
+            return (path + "3d_cnn_binary_model_split" + str(which_split) + 
+                    "_unnormalized_flat_layer_paper_model_" + last_activation + 
+                    "_activation_" + str(model_version) + str(model_nr) + ".h5")
+            
+    return generate_model_name
+
 # def define_model(input_dim = (128, 128, 28,1), 
 #                  layer_connection = "globalAveragePooling",
 #                  activation = "ontram"):

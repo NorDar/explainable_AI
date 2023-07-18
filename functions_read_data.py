@@ -151,6 +151,54 @@ def split_data(id_tab, X, fold):
     
     return (X_train, X_valid, X_test), (y_train, y_valid, y_test)
 
+def version_setup(DATA_DIR, version, model_version):
+    if version == "andrea": ## for andrea
+        with h5py.File("/tf/notebooks/hezo/stroke_zurich/data/dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5", "r") as h5:
+            # with h5py.File(IMG_DIR2 + 'dicom-3d.h5', "r") as h5:
+            # both images are the same
+                X_in = h5["X"][:]
+                pat = h5["pat"][:]
+                
+        # load results
+        path_results = DATA_DIR + "all_tab_results_andrea_split.csv" # andrea split
+        
+    elif version.startswith("10Fold"): ## for 10 Fold       
+        if version.endswith("V0") or version.endswith("sigmoid"):
+            id_tab = pd.read_csv(DATA_DIR + "10Fold_ids_V0.csv", sep=",")
+            num_models = 5
+        elif version.endswith("V1"):
+            id_tab = pd.read_csv(DATA_DIR + "10Fold_ids_V1.csv", sep=",")
+            num_models = 10
+        elif version.endswith("V2") or version.endswith("V2f"):
+            id_tab = pd.read_csv(DATA_DIR + "10Fold_ids_V2.csv", sep=",")
+            num_models = 5
+        elif version.endswith("V3"):
+            id_tab = pd.read_csv(DATA_DIR + "10Fold_ids_V3.csv", sep=",")
+            num_models = 5
+        pat = id_tab["p_id"].to_numpy()
+        X_in = np.load(DATA_DIR + "prepocessed_dicom_3d.npy")
+        
+        # load results
+        path_results = DATA_DIR + "all_tab_results_" + version + "_M" + str(model_version) + ".csv" # 10 Fold
+        
+    all_results = pd.read_csv(path_results, sep=",")
+    all_results = all_results.sort_values("p_idx")
+        
+    return X_in, pat, id_tab, all_results, num_models
+
+def dir_setup(DIR, version):
+    if version.startswith("10Fold"):
+        WEIGHT_DIR = DIR + "weights/" + version + "/"
+        OUTPUT_DIR = DIR + "pictures/" + version + "/"
+        pic_save_name = "10Fold_ensembling" + version[6:]
+        
+    elif version == "andrea":
+        WEIGHT_DIR = DIR + "weights/andrea_split/"
+        OUTPUT_DIR = DIR + "pictures/andrea_split/"
+        pic_save_name = "andrea_split"
+        
+    return WEIGHT_DIR, OUTPUT_DIR, pic_save_name
+
 
 # def normalize(volume):
 #     """Normalize the volume"""

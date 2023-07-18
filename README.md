@@ -31,7 +31,7 @@ All data, intermediate and final results are saved locally on a ZHAW server.
 
 ### Functions
 
-- `function_model_definition.py`:
+- `functions_model_definition.py`:
 - `function_read_data.py`:
 - `functions_gradcam.py`:
 - `helper_functions.py`:
