@@ -73,13 +73,13 @@ def stroke_binary_3d(input_dim = (128, 128, 28,1),
     
     return model_3d
 
-def define_model(input_dim = (128, 128, 28,1), 
-                 layer_connection = "globalAveragePooling",
-                 activation = "ontram"):
-    valid_layer_connection = ["flatten", "globalAveragePooling"]
-    if status not in valid_layer_connection:
-        raise ValueError("stroke_binary_3d: layer_connection must be one of %r." % valid_layer_connection)
-    valid_activation = ["sigmoid", "ontram"]
-    if status not in valid_activation:
-        raise ValueError("stroke_binary_3d: ontram must be one of %r." % valid_activation)
+# def define_model(input_dim = (128, 128, 28,1), 
+#                  layer_connection = "globalAveragePooling",
+#                  activation = "ontram"):
+#     valid_layer_connection = ["flatten", "globalAveragePooling"]
+#     if status not in valid_layer_connection:
+#         raise ValueError("stroke_binary_3d: layer_connection must be one of %r." % valid_layer_connection)
+#     valid_activation = ["sigmoid", "ontram"]
+#     if status not in valid_activation:
+#         raise ValueError("stroke_binary_3d: ontram must be one of %r." % valid_activation)
 
