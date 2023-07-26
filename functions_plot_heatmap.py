@@ -261,14 +261,17 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                         save_name + '_last_and_all_layers_' + heatmap_mode + '.png')
             
 # Plot function:  Last conv layer, average over all conv layer and original
-def plot_gradcams_avg_max_org(pat_data, res_table, vis_layers, res_images, res_model_names, model_3d,
-                               layer_mode, cmap, hm_positive,
+# def plot_gradcams_avg_max_org(pat_data, res_table, vis_layers, res_images, res_model_names, model_3d,
+#                                layer_mode, cmap, hm_positive,
+#                                save_path, save_name, save = True, hm_of_pred = True):
+def plot_gradcams_avg_max_org(pat_data, res_table, res_images, heatmaps,
+                               cmap, hm_positive,
                                save_path, save_name, save = True, hm_of_pred = True):
     
-    if "sigmoid" in str(model_3d.layers[-1].activation):
-        pred_idx = 0
-    elif "softmax" in str(model_3d.layers[-1].activation):
-        pred_idx = 1
+    # if "sigmoid" in str(model_3d.layers[-1].activation):
+    #     pred_idx = 0
+    # elif "softmax" in str(model_3d.layers[-1].activation):
+    #     pred_idx = 1
     
     if len(res_table["p_id"]) != res_table["p_id"].nunique():
         add_testset = True
@@ -302,7 +305,7 @@ def plot_gradcams_avg_max_org(pat_data, res_table, vis_layers, res_images, res_m
         plt.gcf().text(0.66, end_text+3/num_rows/18, "pred uncertainty: " + str(round(res_table["y_pred_unc"][j], 3)), fontsize=16)
         if "heatmap_unc_last_layer" in res_table:
             plt.gcf().text(0.66, end_text+2/num_rows/18, 
-                           "heatmap unc. last layer: " + str(round(res_table["heatmap_unc_last_layer"][j], 3)), fontsize=16)
+                           "heatmap uncertainty: " + str(round(res_table["heatmap_unc_last_layer"][j], 3)), fontsize=16)
         
         # check predicted class
         if res_table["y_pred_class"][j] == 0 and hm_of_pred == True:
@@ -314,15 +317,18 @@ def plot_gradcams_avg_max_org(pat_data, res_table, vis_layers, res_images, res_m
         plt.gcf().text(0.1, text_pos[0], "Average Heatmap", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
 
-        heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
-                img = res_images[j:j+1], 
-                cnn = model_3d,
-                model_names = res_model_names[j],
-                layers = vis_layers,
-                model_mode = layer_mode,
-                layer_mode = layer_mode,
-                pred_index = pred_idx,
-                invert_hm = invert_last_layer)
+        # heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
+        #         img = res_images[j:j+1], 
+        #         cnn = model_3d,
+        #         model_names = res_model_names[j],
+        #         layers = vis_layers,
+        #         model_mode = layer_mode,
+        #         layer_mode = layer_mode,
+        #         pred_index = pred_idx,
+        #         invert_hm = invert_last_layer)
+        
+        heatmap = heatmaps[j]
+        resized_img = res_images[j]
 
         plot_gradcam(resized_img, heatmap,
                 version = "overlay",

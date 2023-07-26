@@ -26,16 +26,18 @@ All data, intermediate and final results are saved locally on a ZHAW server.
 - `GradCam_1Model.ipynb`:
 - `GradCam_allModels.ipynb`:
 - `GradCam_allModels_slider.ipynb`:
-- `GradCam_generate_allPics.ipynb`:
 - `Occlusion_allModels_slider.ipynb`:
+- `generate_all_heatmaps.ipynb`:
 
 ### Functions
 
+- `functions_read_data.py`:
 - `functions_model_definition.py`:
-- `function_read_data.py`:
+- `functions_metrics.py`:
 - `functions_gradcam.py`:
-- `helper_functions.py`:
-- `plot_functino_gradcam.py`:
+- `functions_occlusion.py`:
+- `functions_plot_heatmap.py`:
+- `functions_slider.py`:
 
 ### GradCam Understanding
 
@@ -43,7 +45,7 @@ All data, intermediate and final results are saved locally on a ZHAW server.
 
 ## Modelversions
 
-- andrea_split: splits and training as in paper 
+andrea_split: splits and training as in paper 
 - 10Fold_sigmoid_V0 (old name: 10Fold_sigmoid): 10 stratifed (with outcome mrs > 2 or mrs <= 2) Folds trained with the last layer beeing activated with sigmoid (5 ensembles per split)
 - 10Fold_softmax_V0: same Folds as 10Fold_sigmoid but last layer activated with softmax (5 ensembles per split)
 - 10Fold_softmax_V1: new 10 Fold stratified (with mrs) and last layer activated with softmax (10 ensembles per split)

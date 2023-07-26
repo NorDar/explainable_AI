@@ -60,8 +60,8 @@ def volume_occlusion(volume, res_tab,
         
             raise ValueError('shape and size do not match')
 
-    num_occlusion =  int(np.prod(((np.array(volume.shape[0:3]) - occlusion_size) / occlusion_stride) + 1))
-    print('number of occlusions per model: ', num_occlusion)
+    # num_occlusion =  int(np.prod(((np.array(volume.shape[0:3]) - occlusion_size) / occlusion_stride) + 1))
+    # print('number of occlusions per model: ', num_occlusion)
     
     ## loop over models
     h_l = []

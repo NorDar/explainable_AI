@@ -186,18 +186,20 @@ def version_setup(DATA_DIR, version, model_version):
         
     return X_in, pat, id_tab, all_results, num_models
 
-def dir_setup(DIR, version):
+def dir_setup(DIR, version, model_version, hm_type = "gc", ending = "_predcl"):
     if version.startswith("10Fold"):
         WEIGHT_DIR = DIR + "weights/" + version + "/"
-        OUTPUT_DIR = DIR + "pictures/" + version + "/"
-        pic_save_name = "10Fold_ensembling" + version[6:]
+        DATA_OUTPUT_DIR = DIR + "pictures/" + version + "/"
+        PIC_OUTPUT_DIR = DIR + "pictures/" + version + "/"
+        pic_save_name = version + "_M" + str(model_version) + "_" + hm_type + ending
         
     elif version == "andrea":
         WEIGHT_DIR = DIR + "weights/andrea_split/"
-        OUTPUT_DIR = DIR + "pictures/andrea_split/"
-        pic_save_name = "andrea_split"
+        DATA_OUTPUT_DIR = DIR + "pictures/andrea_split/"
+        PIC_OUTPUT_DIR = DIR + "pictures/andrea_split/"
+        pic_save_name = "andrea_split_" + hm_type + ending
         
-    return WEIGHT_DIR, OUTPUT_DIR, pic_save_name
+    return WEIGHT_DIR, DATA_OUTPUT_DIR, PIC_OUTPUT_DIR, pic_save_name
 
 
 # def normalize(volume):
