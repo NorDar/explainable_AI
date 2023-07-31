@@ -1,19 +1,33 @@
 import numpy as np
 
-def iter_occlusion(volume, size=4, stride = None):
-  # volume: np array in shape 128, 128, 64, 1
+# Occlusion Iteration: 
+# Generatess all possible occlusions of a given size and stride for a given volume
+# stride must be smaller or equal size
+#
+# Returns the starting coordinates of the occlusion and the occluded volume
+def iter_occlusion(volume, size, stride):
+    # volume: np array in shape 128, 128, 64, 1
+    # size: 3 element array or tuple
+    # stride: scalar
 
-  occlusion_center = np.full((size[0], size[1], size[2], 1), [0.5], np.float32)
+    occlusion_center = np.full((size[0], size[1], size[2], 1), [0.5], np.float32)
 
-  for x in range(0, volume.shape[0]-size[0]+1, stride):
-    for y in range(0, volume.shape[1]-size[1]+1, stride):
-      for z in range(0, volume.shape[2]-size[2]+1, stride):
-        tmp = volume.copy()
+    for x in range(0, volume.shape[0]-size[0]+1, stride):
+        for y in range(0, volume.shape[1]-size[1]+1, stride):
+            for z in range(0, volume.shape[2]-size[2]+1, stride):
+                tmp = volume.copy()
 
-        tmp[x:x + size[0], y:y + size[1], z:z + size[2]] = occlusion_center
+                tmp[x:x + size[0], y:y + size[1], z:z + size[2]] = occlusion_center
 
-        yield x, y, z, tmp
+                yield x, y, z, tmp
 
+
+# Occlusion Heatmap Calculation:
+# Calculates the heatmap for a given volume and models
+# For each model, the heatmap is calculated and then averaged over all models
+#
+# Returns the heatmap, the original volume, the coordinates of the maximum heatmap 
+#  slice and the standard deviation of the heatmaps
 def volume_occlusion(volume, res_tab, 
                      occlusion_size, 
                      cnn, model_names,
@@ -23,7 +37,21 @@ def volume_occlusion(volume, res_tab,
                      model_mode = "mean",
                      occlusion_stride = None,
                      input_shape = (128,128,28,1)):
+    # volume: np array in shape of input_shape
+    # res_tab: dataframe with results of all models
+    # occlusion_size: scalar or 3 element array, if scalar, occlusion is cubic
+    # cnn: keras model
+    # model_names: list of model names, to load weights
+    # normalize: bool, if True, heatmap is normalized to [0,1] (after each model, and after averaging)
+    # both_directions: bool, if True, heatmap is calculated for positive and negative prediction impact, if False,
+    #           heatmap is cut off at the non-occluded prediction probability and only negative impact is shown
+    # invert_hm: string, one of ["pred_class", "always", "never"], if "pred_class", heatmap is inverted if
+    #           class 1 is predicted, if "always", heatmap is always inverted, if "never", heatmap is never inverted
+    # model_mode: string, one of ["mean", "median", "max"], defines how the heatmaps of the different models are combined
+    # occlusion_stride: scalar, stride of occlusion, if None, stride is set to minimum of occlusion_size
+    # input_shape: tuple, shape of input volume
     
+    ## Check input
     valid_modes = ["mean", "median", "max"]
     if model_mode not in valid_modes:
         raise ValueError("volume_occlusion: model_mode must be one of %r." % valid_modes)
@@ -80,6 +108,7 @@ def volume_occlusion(volume, res_tab,
 
         ## Faster Implementation
         
+        ## Generate all possible occlusions
         X = []
         xyz = []
         for n, (x, y, z, vol_float) in enumerate(iter_occlusion(
@@ -88,19 +117,17 @@ def volume_occlusion(volume, res_tab,
             xyz.append((x,y,z))
         
         X = np.array(X)
-        out = cnn.predict(X)
+        out = cnn.predict(X) # do prediction for all occlusions at once 
         
+        ## Add predictions to heatmap and count number of predictions per voxel
         for i in range(len(xyz)):
             x,y,z = xyz[i]
             heatmap_prob_sum[x:x + occlusion_size[0], y:y + occlusion_size[1], z:z + occlusion_size[2]] += out[i,0]
             heatmap_occ_n[x:x + occlusion_size[0], y:y + occlusion_size[1], z:z + occlusion_size[2]] += 1
-        
 
-        # print("\n")
-        # print("calculating heatmap...")
-
-        hm = heatmap_prob_sum / heatmap_occ_n
+        hm = heatmap_prob_sum / heatmap_occ_n # calculate average probability per voxel
         
+        ## Get cutoff, invert heatmap if necessary and normalize
         cut_off = res_tab["y_pred_model_" + model_name[-5:-3]][0]
     
         if (res_tab["y_pred_class"][0] == 0 and invert_hm == "pred_class" and not both_directions) or (
@@ -143,6 +170,7 @@ def volume_occlusion(volume, res_tab,
     elif invert_hm == "always":
         heatmap = 1 - heatmap
         
+    ## Get maximum heatmap slice and standard deviation of heatmaps
     target_shape = h_l.shape[:-1]
     max_hm_slice = np.array(np.unravel_index(h_l.reshape(target_shape).reshape(len(h_l), -1).argmax(axis = 1), 
                                              h_l.reshape(target_shape).shape[1:])).transpose()
