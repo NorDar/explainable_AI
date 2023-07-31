@@ -2,12 +2,16 @@ import tensorflow as tf
 import numpy as np
 
 from skimage.transform import resize
-from matplotlib import pyplot as plt
 
 ### GradCam for specific layer
 def grad_cam_3d(img, model_3d, layer, pred_index=None, 
                 inv_hm=False, gcplusplus=True):
+    # img: 3d image
+    # model_3d: 3d cnn model with loaded weights
+    # layer: layer name of model_3d where gradcam should be applied
     # pred_index: output channel when sigmoid should always be 0, when softmax 0 favorable, 1 unfavorable
+    # inv_hm: invert heatmap
+    # gcplusplus: use gradcam++ instead of gradcam (only positive values)
     
     # First, we create a MODEL that maps the input image to the activations
     # of the last conv layer as well as the output predictions
@@ -67,10 +71,24 @@ def grad_cam_3d(img, model_3d, layer, pred_index=None,
 
 
 
-### GradCam for multiple layers (average, median and max activations are possible)
+### GradCam for multiple layers (mean, median or max of all layers can be used)
 def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean", 
                              normalize = True, pred_index=None, 
                              invert_hm="none", gcpp_hm="all"):
+    # img: 3d image
+    # model_3d: 3d cnn model with loaded weights
+    # layers: list of layer names of model_3d where gradcam should be applied
+    # mode: mean, median or max, how to combine the heatmaps of the layers
+    # normalize: normalize heatmaps between 0 and 1
+    # pred_index: output channel when sigmoid should always be 0, when softmax 0 favorable, 1 unfavorable
+    # invert_hm: one of "none", "all", "last", 
+    #      if "all" then all heatmaps are inverted, if "last" then only last heatmap is inverted
+    # gcpp_hm: one of "all", "none", "last", 
+    #      if "all" then all heatmaps are positive, if "none" then all heatmaps are negative,
+    #      if "last" then only last heatmap is positive (gradcam++)
+    
+    
+    ## Check input
     valid_modes = ["mean", "median", "max"]
     if mode not in valid_modes:
         raise ValueError("multi_layers_grad_cam_3d: mode must be one of %r." % valid_modes)
@@ -87,6 +105,7 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
     if not isinstance(layers, list):
         layers = [layers]
     
+    ## Apply gradcam to all layers
     h_l = []
     for i, layer in enumerate(layers):
         
@@ -112,6 +131,7 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
         # if none, then absolute is not applied
         h_l = np.abs(h_l)
     
+    ## Combine heatmaps
     if mode == "mean":
         heatmap = np.mean(h_l, axis = 0)
     elif mode == "median":
@@ -119,6 +139,7 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
     elif mode == "max":
         heatmap = np.max(h_l, axis = 0) 
         
+    ## Normalize heatmap
     if normalize and gcpp_hm in ["last", "all"] and heatmap.max() != 0:
         heatmap = ((heatmap - heatmap.min())/heatmap.max())
     elif normalize and gcpp_hm == "none" and heatmap.max() != 0:
@@ -131,11 +152,29 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
     
     return (heatmap, resized_img)
 
-# applies grad cams to multiple models (and layers)
+# Applies grad cams to multiple models (and layers)
+#
+# Returns combined heatmap, the original image, the slice with the highest 
+#   heatmap value and the mean std of the heatmaps
 def multi_models_grad_cam_3d(img, cnn, model_names, layers, 
                              model_mode = "mean", layer_mode = "mean", 
                              normalize = True, pred_index=None,
                              invert_hm="none", gcpp_hm="last"):
+    # img: 3d image
+    # cnn: 3d cnn model without loaded weights
+    # model_names: list of model names (with path) of cnn, to load weights
+    # layers: list of layer names of model_3d where gradcam should be applied
+    # model_mode: mean, median or max, how to combine the heatmaps of the models
+    # layer_mode: mean, median or max, how to combine the heatmaps of the layers
+    # normalize: normalize heatmaps between 0 and 1
+    # pred_index: output channel when sigmoid should always be 0, when softmax 0 favorable, 1 unfavorable
+    # invert_hm: one of "none", "all", "last",
+    #     if "all" then all heatmaps are inverted, if "last" then only last heatmap is inverted
+    # gcpp_hm: one of "all", "none", "last", 
+    #     if "all" then all heatmaps are positive, if "none" then all heatmaps are negative,
+    #     if "last" then only last heatmap is positive (gradcam++)
+    
+    ## Check input
     valid_modes = ["mean", "median", "max"]
     if model_mode not in valid_modes:
         raise ValueError("multi_models_grad_cam_3d: model_mode must be one of %r." % valid_modes)
@@ -143,6 +182,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
     if not isinstance(layers, list):
         layers = [layers]
     
+    ## Load weights and apply gradcam to all models
     h_l = []
     for model_name in model_names:
         cnn.load_weights(model_name)
@@ -151,6 +191,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
             pred_index=pred_index, invert_hm=invert_hm, gcpp_hm=gcpp_hm)
         h_l.append(heatmap)
     
+    ## Combine heatmaps of all models
     h_l = np.array(h_l)
     if model_mode == "mean":
         heatmap = np.mean(h_l, axis = 0)
@@ -159,6 +200,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
     elif model_mode == "max":
         heatmap = np.max(h_l, axis = 0)
         
+    ## Normalize heatmap
     if normalize and gcpp_hm in ["last", "all"] and heatmap.max() != 0:
         heatmap = ((heatmap - heatmap.min())/heatmap.max())
     elif normalize and gcpp_hm == "none" and heatmap.max() != 0:
@@ -169,6 +211,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
     elif not normalize:
         raise ValueError("Something went wrong with normalization in multi_models_grad_cam_3d")
         
+    ## Extract max slice and mean std of heatmap
     target_shape = h_l.shape[:-1]
     max_hm_slice = np.array(np.unravel_index(h_l.reshape(target_shape).reshape(len(h_l), -1).argmax(axis = 1), 
                                              h_l.reshape(target_shape).shape[1:])).transpose()
@@ -178,7 +221,17 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
 
 
 # Prepares data in order to use multi_models_grad_cam_3d and plot_gradcams_last_avg_org
+#
+# Returns a dataframe with all results, an array of the images and a list of model names 
+#  for all patients in p_ids
 def get_img_and_models(p_ids, results, pats, imgs, gen_model_name, num_models = 5):
+    # p_ids: list of patient ids
+    # results: dataframe with results of all patients
+    # pats: array with patient ids of all images (must be same order as imgs!!!)
+    # imgs: array with all images (must be same order as pats!!!)
+    # gen_model_name: function that generates model names for a given test split and model number
+    # num_models: number of models per test split
+    
     imgs = np.expand_dims(imgs, axis = -1)
     
     # extract table with all matches for p_ids
