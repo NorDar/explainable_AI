@@ -220,7 +220,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
     return heatmap, resized_img, max_hm_slice, hm_mean_std
 
 
-# Prepares data in order to use multi_models_grad_cam_3d and plot_gradcams_last_avg_org
+# Prepares data in order to use multi_models_grad_cam_3d and volume_occlusion
 #
 # Returns a dataframe with all results, an array of the images and a list of model names 
 #  for all patients in p_ids

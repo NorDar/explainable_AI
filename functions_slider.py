@@ -59,7 +59,7 @@ def gradcam_interactive_plot(p_id, vis_layers,
     print("max slices:", (slices[2], slices[0], slices[1]))
     
     ## Plot Heatmap Average
-    phm.plot_gradcam(resized_img, heatmap,
+    phm.plot_heatmap(resized_img, heatmap,
                 version = "overlay",
                 mode = "avg",
                 hm_colormap=cmap,
@@ -68,14 +68,14 @@ def gradcam_interactive_plot(p_id, vis_layers,
 
     ## Plot Heatmap Slider
     def slicer(axi_slider, cor_slider, sag_slider):
-        phm.plot_gradcam(resized_img, heatmap,
+        phm.plot_heatmap(resized_img, heatmap,
                 version = "overlay",
                 mode = "def",
                 slices = (cor_slider,sag_slider,axi_slider),
                 hm_colormap=cmap,
                 hm_positive=hm_positive,
                 colorbar=True)
-        phm.plot_gradcam(resized_img, heatmap,
+        phm.plot_heatmap(resized_img, heatmap,
                 version = "original",
                 mode = "def",
                 slices=(cor_slider,sag_slider,axi_slider),
@@ -151,7 +151,7 @@ def occlusion_interactive_plot(p_id, occ_size, occ_stride,
     print("max slices:", (slices[2], slices[0], slices[1]))
     
     ## Plot Heatmap Average
-    phm.plot_gradcam(resized_img, heatmap,
+    phm.plot_heatmap(resized_img, heatmap,
                 version = "overlay",
                 mode = "avg",
                 hm_colormap=cmap,
@@ -160,14 +160,14 @@ def occlusion_interactive_plot(p_id, occ_size, occ_stride,
 
     ## Plot Heatmap Slider
     def slicer(axi_slider, cor_slider, sag_slider):
-        phm.plot_gradcam(resized_img, heatmap,
+        phm.plot_heatmap(resized_img, heatmap,
                 version = "overlay",
                 mode = "def",
                 slices = (cor_slider,sag_slider,axi_slider),
                 hm_colormap=cmap,
                 hm_positive=hm_positive,
                 colorbar=True)
-        phm.plot_gradcam(resized_img, heatmap,
+        phm.plot_heatmap(resized_img, heatmap,
                 version = "original",
                 mode = "def",
                 slices=(cor_slider,sag_slider,axi_slider),

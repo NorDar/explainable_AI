@@ -9,47 +9,62 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import functions_gradcam as gc
 
-def plot_gradcam(resized_img, heatmap, 
+# Plots the heatmap of a 3D image
+# either as overlay, heatmap only or original image only
+# can be added to existing plot
+def plot_heatmap(resized_img, heatmap, 
                  version = "overlay",
                  mode = "avg",
                  slices = None,
                  orig_max = False,
                  heatmap_threshold = None,
                  negative = False,
-                 pic_size = (128,128),
-                 show = True,
-                 add_plot = None,
                  hm_positive = True,
                  hm_colormap = "jet",
                  colorbar = False,
                  slice_line = False,
-                 return_fig = False):
+                 add_plot = None,
+                 return_fig = False,
+                 show = True,
+                 pic_size = (128,128)):
+    # resized_img: 3D image (numpy array) of shape (x,y,z)
+    # heatmap: 3D heatmap (numpy array) of shape (x,y,z)
+    # version: overlay: heatmap is overlayed on image
+    #          original: only image is shown
+    #          activation: only heatmap is shown
     # mode: avg => averages (mean) of heatmaps and image. avg_heatmap_correction can be applied for heatmap average
     #       max => extracts slice with highest activation for heatmap and image
     #       def => extracts defined slices. if not defined by "slices", than extract middle slice of each view
     # slices: should be none or a tuple of shape 3. defines which slice to take when mode == "def" (cor, sag, ax)
     # orig_max: if True and mode is "max" then the slice with the brightest point is selected
-    # heatmap_threshold: if not None than should be between 0 and 1. At which proportion of the heatmap values, 
+    # heatmap_threshold: if not None, then should be between 0 and 1. At which proportion of the heatmap values, 
     #                     the heatmap should be set to 0. This can reduce noise of GradCam. "gradcam threshold"
-    # add_plot: if not NULL, a tuple of (current_row, total_rows) must be given (current_row starts counting with 0)
+    # negative: if True, the image will be inverted (negative)
     # hm_positive: if True only positive Values will be shown (should be normal if gradcam++) 
+    #              if False, all values will be shown
+    # hm_colormap: colormap of the heatmap
+    # colorbar: if True a colorbar will be added to the plot
     # slice_line: if True a line will be drawn in the image to show which slice is selected
+    # add_plot: if not NULL, a tuple of (current_row, total_rows) must be given (current_row starts counting with 0)
+    # return_fig: if True, the figure and axis will be returned
+    # show: if True, the plot will be shown
+    # pic_size: size of the image in the plot
     
     valid_versions = ["overlay", "original", "activation"]
     valid_modes = ["avg", "max", "def"]
     if version not in valid_versions:
-        raise ValueError("plot_gradcam: version must be one of %r." % valid_versions)
+        raise ValueError("plot_heatmap: version must be one of %r." % valid_versions)
     if mode not in valid_modes:
-        raise ValueError("plot_gradcam: mode must be one of %r." % valid_modes)
+        raise ValueError("plot_heatmap: mode must be one of %r." % valid_modes)
     if heatmap_threshold is not None:
         if not (heatmap_threshold < 1 and heatmap_threshold > 0):
-            raise ValueError("plot_gradcam: if heatmap_threshold is not None than must be between 0 and 1")
+            raise ValueError("plot_heatmap: if heatmap_threshold is not None than must be between 0 and 1")
     
     if slices is None and mode == "def":
-        warnings.warn("plot_gradcam: slices are not defined but mode is set to def. Plot slices (64,64,14)")
+        warnings.warn("plot_heatmap: slices are not defined but mode is set to def. Plot slices (64,64,14)")
         slices = (64,64,14)
     elif slices is not None and mode in ["avg", "max"]:
-        warnings.warn("plot_gradcam: slices are defined but mode is not set to def. Ignore value of slice!")
+        warnings.warn("plot_heatmap: slices are defined but mode is not set to def. Ignore value of slice!")
 
     if mode == "max" and orig_max == False:
         slices = np.unravel_index(heatmap.argmax(), heatmap.shape)
@@ -130,6 +145,7 @@ def plot_gradcam(resized_img, heatmap,
         ax.set_title(captions[i])
         plt.axis('off')
     
+    ## Add colorbar
     if colorbar and version != "original":
         axins = inset_axes(
             ax,
@@ -155,8 +171,22 @@ def plot_gradcam(resized_img, heatmap,
         
         
 # Plot function: Last conv layer, average over all conv layer and original
+# gradcam heatmap is calculated during function call
+# can be used for multiple patients
 def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_names, model_3d,
                                layer_mode, heatmap_mode, save_path, save_name, save = True, hm_of_pred = True):
+    # res_table: table with results
+    # vis_layers: list of all layers to visualize 
+    # res_images: list of all images to visualize (same order as res_table)
+    # res_model_names: list of all model names to visualize (same order as res_table)
+    # model_3d: model to use for gradcam
+    # layer_mode: "avg" or "max". How to combine the heatmaps of the different layers
+    # heatmap_mode: "avg" or "max". If "avg" then the heatmap is averaged over all slices
+    #               If "max" then the slice with the highest activation is selected
+    # save_path: path to save the plots
+    # save_name: name of the plot
+    # save: if True the plot will be saved
+    # hm_of_pred: if True, the heatmap will be calculated for the predicted class.    
     
     if "sigmoid" in str(model_3d.layers[-1].activation):
         pred_idx = 0
@@ -203,7 +233,7 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
         else:
             invert_last_layer = "none"
 
-        # last layer
+        # Heatmap of last layer
         plt.gcf().text(0.1, text_pos[0], "Layer: " + vis_layers[-1], 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
 
@@ -217,14 +247,14 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                 pred_index = pred_idx,
                 invert_hm = invert_last_layer)
 
-        plot_gradcam(resized_img, heatmap,
+        plot_heatmap(resized_img, heatmap,
                 version = "overlay",
                 mode = heatmap_mode,
                 add_plot = (0,num_rows),
                 show = False)
 
 
-        # average over all layers
+        # Heatmap average over all layers
         heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
                 img = res_images[j:j+1], 
                 cnn = model_3d,
@@ -234,20 +264,19 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                 layer_mode = layer_mode,
                 pred_index = pred_idx,
                 invert_hm = invert_last_layer)
-
-    #     print(layer_mode, "over all Layers")
+        
         plt.gcf().text(0.1, text_pos[-1], layer_mode + " over all Layers", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-        plot_gradcam(resized_img, heatmap,
+        plot_heatmap(resized_img, heatmap,
                     version = "overlay",
                     mode = heatmap_mode,
                     add_plot = (1,num_rows),
                     show = False)
 
-    #     print("Original")
+        # Original image
         plt.gcf().text(0.1, start_text+(plot_at_end/num_rows)/2, "Original", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-        plot_gradcam(resized_img, heatmap,
+        plot_heatmap(resized_img, heatmap,
                     version = "original",
                     orig_max = True,
                     mode = heatmap_mode,
@@ -260,13 +289,24 @@ def plot_gradcams_last_avg_org(res_table, vis_layers, res_images, res_model_name
                         ("testset_" + res_table["p_id"][j] + "_" if add_testset else "") +
                         save_name + '_last_and_all_layers_' + heatmap_mode + '.png')
             
-# Plot function:  Last conv layer, average over all conv layer and original
-# def plot_gradcams_avg_max_org(pat_data, res_table, vis_layers, res_images, res_model_names, model_3d,
-#                                layer_mode, cmap, hm_positive,
-#                                save_path, save_name, save = True, hm_of_pred = True):
-def plot_gradcams_avg_max_org(pat_data, res_table, res_images, heatmaps,
+
+# Plot average and max heatmap of last layer and original image
+# heatmaps are given as input
+# can be used for multiple patients
+def plot_heatmaps_avg_max_org(pat_data, res_table, res_images, heatmaps,
                                cmap, hm_positive,
                                save_path, save_name, save = True, hm_of_pred = True):
+    # pat_data: table with patient data
+    # res_table: table with results for all patients for which heatmaps should be plotted
+    # res_images: list of all images to visualize (same order as res_table)
+    # heatmaps: list of all heatmaps to visualize (same order as res_table)
+    # cmap: colormap of the heatmap
+    # hm_positive: if True only positive Values will be shown
+    #              if False, all values will be shown
+    # save_path: path to save the plots
+    # save_name: name of the plot
+    # save: if True the plot will be saved
+    # hm_of_pred: if True, the heatmap will be calculated for the predicted class
     
     # if "sigmoid" in str(model_3d.layers[-1].activation):
     #     pred_idx = 0
@@ -316,21 +356,11 @@ def plot_gradcams_avg_max_org(pat_data, res_table, res_images, heatmaps,
         # last layer
         plt.gcf().text(0.1, text_pos[0], "Average Heatmap", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-
-        # heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
-        #         img = res_images[j:j+1], 
-        #         cnn = model_3d,
-        #         model_names = res_model_names[j],
-        #         layers = vis_layers,
-        #         model_mode = layer_mode,
-        #         layer_mode = layer_mode,
-        #         pred_index = pred_idx,
-        #         invert_hm = invert_last_layer)
         
         heatmap = heatmaps[j]
         resized_img = res_images[j]
 
-        plot_gradcam(resized_img, heatmap,
+        plot_heatmap(resized_img, heatmap,
                 version = "overlay",
                 mode = "avg",
                 hm_colormap=cmap,
@@ -341,7 +371,7 @@ def plot_gradcams_avg_max_org(pat_data, res_table, res_images, heatmaps,
 
         plt.gcf().text(0.1, text_pos[-1], "Max Heatmap Slice", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-        plot_gradcam(resized_img, heatmap,
+        plot_heatmap(resized_img, heatmap,
                     version = "overlay",
                     mode = "max",
                     hm_colormap=cmap,
@@ -352,7 +382,7 @@ def plot_gradcams_avg_max_org(pat_data, res_table, res_images, heatmaps,
 
         plt.gcf().text(0.1, start_text+(plot_at_end/num_rows)/2, "Original", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-        plot_gradcam(resized_img, heatmap,
+        plot_heatmap(resized_img, heatmap,
                     version = "original",
                     mode = "max",
                     orig_max = True,
