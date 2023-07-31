@@ -5,8 +5,15 @@ import pandas as pd
 import numpy as np
 
 
+# Read data as in the original paper:
+# https://github.com/LucasKook/dtm-usz-stroke/blob/main/README.md
 # not efficient when data is big
-def read_and_split_img_data_andrea(path_img, path_tab, path_splits, split, check_print = True):     
+def read_and_split_img_data_andrea(path_img, path_tab, path_splits, split, check_print = True):   
+    # path_img: path to image data
+    # path_tab: path to tabular data
+    # path_splits: path to splitting definition
+    # split: which split to use (1,2,3,4,5,6)
+    # check_print: print shapes of data
      
     ## read image data
     with h5py.File(path_img, "r") as h5:
@@ -129,8 +136,11 @@ def read_and_split_img_data_andrea(path_img, path_tab, path_splits, split, check
     
     return (X_train, X_valid, X_test), (y_train, y_valid, y_test), results
 
-
+# For 10 Fold data and a given fold: split data into training, validation and test set
 def split_data(id_tab, X, fold):
+    # id_tab: table with patient ids and folds
+    # X: image data
+    # fold: which fold to use (0-9)
     
     # define indices of train, val, test
     train_idx_tab = id_tab[id_tab["fold" + str(fold)] == "train"]
@@ -151,13 +161,21 @@ def split_data(id_tab, X, fold):
     
     return (X_train, X_valid, X_test), (y_train, y_valid, y_test)
 
+# Returns data for a given data and model version
+# if version == "andrea": returns data for andrea split
 def version_setup(DATA_DIR, version, model_version):
+    # DATA_DIR: directory where data is stored
+    # version: which data to use (e.g. 10Fold_sigmoid_V1)
+    # model_version: which model version to use
+    
     if version == "andrea": ## for andrea
         with h5py.File("/tf/notebooks/hezo/stroke_zurich/data/dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5", "r") as h5:
             # with h5py.File(IMG_DIR2 + 'dicom-3d.h5', "r") as h5:
             # both images are the same
                 X_in = h5["X"][:]
                 pat = h5["pat"][:]
+                id_tab = None
+                num_models = 6
                 
         # load results
         path_results = DATA_DIR + "all_tab_results_andrea_split.csv" # andrea split
@@ -186,7 +204,14 @@ def version_setup(DATA_DIR, version, model_version):
         
     return X_in, pat, id_tab, all_results, num_models
 
+# Returns directories for a given data and model version
 def dir_setup(DIR, version, model_version, hm_type = "gc", ending = "_predcl"):
+    # DIR: working directory
+    # version: which data to use (e.g. 10Fold_sigmoid_V1)
+    # model_version: which model version to use
+    # hm_type: which heatmap type to use (gc (gradcam), oc (occlusion))
+    # ending: ending of picture name (e.g. _predcl (predicted class))   
+    
     if version.startswith("10Fold"):
         WEIGHT_DIR = DIR + "weights/" + version + "/"
         DATA_OUTPUT_DIR = DIR + "pictures/" + version + "/"
