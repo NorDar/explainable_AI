@@ -5,18 +5,23 @@ import tensorflow_probability as tfp
 from tensorflow.keras.models import Sequential, Model
 
 
-# NN Definition
+# Define the 3d cnn model for binary stroke classification
+# Consists of 4 convolutional blocks, 1 fully connected block and 1 output layer
 def stroke_binary_3d(input_dim = (128, 128, 28,1), 
                      output_dim = 1,
                      layer_connection = "globalAveragePooling",
                      last_activation = "sigmoid"):
+    # input_dim: tuple of integers, shape of input data
+    # output_dim: integer, if 1 sigmoid or linear activation must be used, if 2 softmax activation must be used
+    # layer_connection: string, either "flatten" or "globalAveragePooling"
+    # last_activation: string, either "sigmoid", "linear" or "softmax"
+    
     valid_layer_connection = ["flatten", "globalAveragePooling"]
     if layer_connection not in valid_layer_connection:
         raise ValueError("stroke_binary_3d: layer_connection must be one of %r." % valid_layer_connection)
     valid_activation = ["sigmoid", "linear", "softmax"]
     if last_activation not in valid_activation:
         raise ValueError("stroke_binary_3d: last_activation must be one of %r." % valid_activation)
-        
         
 #     initializer = keras.initializers.he_normal(seed = 2202)
     
@@ -47,7 +52,6 @@ def stroke_binary_3d(input_dim = (128, 128, 28,1),
     #x = layers.MaxPooling3D(pool_size=(2, 2, 2), padding='same')(x)
     #x = layers.Dropout(0.3)(x)
     
-    
     # cnn to flat connection
     if layer_connection == list(valid_layer_connection)[0]:
         x = layers.Flatten()(x)
@@ -73,7 +77,10 @@ def stroke_binary_3d(input_dim = (128, 128, 28,1),
     
     return model_3d
 
+# Define the 3d cnn model parameters for binary stroke classification based on the current model version
 def model_setup(version, input_dim = (128, 128, 28, 1)):
+    # version: string, model version, e.g. 10Fold_sigmoid_V0
+    # input_dim: tuple of integers, shape of input data
 
     if "sigmoid" in version or "andrea_split" in version:
         last_activation = "sigmoid"
@@ -91,6 +98,8 @@ def model_setup(version, input_dim = (128, 128, 28, 1)):
         
     return input_dim, output_dim, LOSS, layer_connection, last_activation
 
+# Define the generate_model_name function based on model version, layer connection and last activation
+# Returns a function that generates a model name based on the split and model number
 def set_generate_model_name(model_version, layer_connection, last_activation, path):
     def generate_model_name(which_split, model_nr):
         if layer_connection == "globalAveragePooling":
@@ -104,13 +113,5 @@ def set_generate_model_name(model_version, layer_connection, last_activation, pa
             
     return generate_model_name
 
-# def define_model(input_dim = (128, 128, 28,1), 
-#                  layer_connection = "globalAveragePooling",
-#                  activation = "ontram"):
-#     valid_layer_connection = ["flatten", "globalAveragePooling"]
-#     if status not in valid_layer_connection:
-#         raise ValueError("stroke_binary_3d: layer_connection must be one of %r." % valid_layer_connection)
-#     valid_activation = ["sigmoid", "ontram"]
-#     if status not in valid_activation:
-#         raise ValueError("stroke_binary_3d: ontram must be one of %r." % valid_activation)
+
 
