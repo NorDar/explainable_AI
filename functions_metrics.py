@@ -6,11 +6,19 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 from statsmodels.stats.proportion import proportion_confint
 from sklearn import metrics
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import confusion_matrix
 from scipy import special
 
+
+# Computes the confidence interval of AUC using bootstrapping
+# adapted from https://stackoverflow.com/questions/19124239/scikit-learn-roc-curve-with-confidence-intervals
 def compute_auc_ci(y_true, y_pred, n_bootstraps=1000, rng_seed=42, alpha=0.05):
-    """Computes the AUC and its confidence interval using bootstrapping."""
+    # y_true: true binary labels
+    # y_pred: target scores, can either be probability estimates of the positive class, 
+    #         confidence values, or non-thresholded measure of decisions
+    # n_bootstraps: number of bootstrap samples to use
+    # rng_seed: seed for the random number generator
+    # alpha: significance level (type I error rate)    
     
     bootstrapped_scores = []
 
@@ -35,10 +43,13 @@ def compute_auc_ci(y_true, y_pred, n_bootstraps=1000, rng_seed=42, alpha=0.05):
     return (confidence_lower, confidence_upper)
 
 
+# Computes a classification report for a binary model 
+#  including AUC, NLL, sensitivity, specificity, and accuracy
 def bin_class_report(X_test,y_test, model):
-    """
-    modified classification report for binary output
-    """
+    # X_test: test set features
+    # y_test: test set labels
+    # model: trained model
+    
     NLL, Acc, AUC0 = model.evaluate( x=X_test, y=y_test, verbose=0)
     y_pred = model.predict(X_test)
     
@@ -75,11 +86,13 @@ def bin_class_report(X_test,y_test, model):
     print("\nArea under Curve (AUC) Binary [95% Conf.]:", np.around(AUC,4),np.around([AUC_CI[0], AUC_CI[1]],4))
     print("Area under Curve (AUC) Probability [95% Conf.]:", np.around(AUC0,4),np.around([AUC0_CI[0], AUC0_CI[1]],4))
     print("Negative Log-Likelihood :", np.around(NLL, 4))
-#     print(metrics.classification_report(y_test.argmax(axis=1), y_pred.argmax(axis =1)))
     return (AUC, NLL, sens, spec)
 
-
+# Computes a classification report for a binary model for given predictions and labels
 def calc_metrics(y, p):
+    # y: true binary labels
+    # p: predicted probabilities
+    
 #     NLL = np.mean(-special.xlogy(y, p) - special.xlogy(1-y, 1-p))
     NLL = tf.keras.losses.binary_crossentropy(y, p)
     AUC =  metrics.roc_auc_score(y, p)
@@ -97,8 +110,13 @@ def calc_metrics(y, p):
     print("Negative Log-Likelihood :", np.around(NLL, 4))
     print("Confusion Matrix : \n", cm)
 
-
+# Calculates the data for a calibration plot
+# 4 bins are calculated based on the quantiles of the predicted probabilities
+# the confidence intervals are calculated using the Wilson score interval
 def cal_plot_data_prep(y_pred, y_test):
+    # y_pred: predicted probabilities
+    # y_test: true binary labels
+    
     # create cuts
     cuts = np.quantile(y_pred, q = [0.25, 0.5, 0.75])
     cuts = np.insert(cuts, obj = 0, values = 0)
@@ -136,15 +154,24 @@ def cal_plot_data_prep(y_pred, y_test):
          "observed_proportion": obs_prop,
          "observed_proportion_lower": obs_prop_lo,
          "observed_proportion_upper": obs_prop_up,
-         "observed_cases": obs_cases,
+         "observed_cases": obs_cases, # number of cases with bad outcome
          "bin_cuts": bin_cuts
         }
     )
     
     return cal_plot_data
 
-
+# Plots a calibration plot for data created by cal_plot_data_prep
 def cal_plot(dat, x_vals, y_vals, lwr_vals, upr_vals, alpha = 1, show = True, col = "C0"):
+    # dat: data created by cal_plot_data_prep
+    # x_vals: column name of the x values
+    # y_vals: column name of the y values
+    # lwr_vals: column name of the lower confidence interval values
+    # upr_vals: column name of the upper confidence interval values
+    # alpha: alpha value for the plot
+    # show: whether to show the plot
+    # col: color of the plot
+    
     plt.xlim(0, 1)
     plt.ylim(0, 1)
 
@@ -165,8 +192,12 @@ def cal_plot(dat, x_vals, y_vals, lwr_vals, upr_vals, alpha = 1, show = True, co
     if show:
         plt.show()
         
+# inverse sigmoid function
+# for trafo averaging
 def inverse_sigmoid(y):
     return np.log(y/(1-y))
 
+# sigmoid function 
+# for trafo averaging
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
