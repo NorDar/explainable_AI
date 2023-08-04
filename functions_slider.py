@@ -11,12 +11,34 @@ import functions_gradcam as gc
 import functions_occlusion as oc
 import functions_plot_heatmap as phm
 
+# generates a gradcam heatmap plot/slider for a given patient id
+# first row shows the average heatmap over each direction
+# second row shows a slider to select the heatmap slice (default is the maximum heatmap slice)
+# third row shows the original image with the same slider as in the second row
+# additionally some meta information is printed
+# 
+# all heatmaps can be provided in the same order as X_in or will be generated if None
+# if None then the model arguments are required 
+# if the heatmap is provided then pred_hm_only does only change the colorbar
 def gradcam_interactive_plot(p_id, vis_layers,
                              cnn, all_results, pat, X_in,
                              generate_model_name, num_models,
                              pat_dat,
                              pred_hm_only=True, 
                              heatmaps = None):
+     # p_id: patient id
+    # vis_layers: the layers for which the heatmap is generated, should be last layer
+    # cnn: the cnn model (weights must not be loaded)
+    # all_results: the result table 
+    # pat: the patient ids of the images (same order as X_in)
+    # X_in: the images (same order as pat)
+    # generate_model_name: function to generate the model names
+    # num_models: number of models per fold
+    # pat_dat: the patient data table
+    # pred_hm_only: if True then the heatmap is only plotted for the predicted class
+    #               if False then the positive and negative heatmap is plotted
+    # heatmaps: if None then the heatmaps are generated, otherwise the heatmaps must be provided (same order as X_in)
+    
     p_ids = [p_id]
     (res_table, res_images, res_model_names) = gc.get_img_and_models(
         p_ids, results = all_results, pats = pat, imgs = X_in, 
@@ -107,13 +129,35 @@ def gradcam_interactive_plot(p_id, vis_layers,
     w.update()
    
    
- 
+# generates a occlusion heatmap plot/slider for a given patient id
+# first row shows the average heatmap over each direction
+# second row shows a slider to select the heatmap slice (default is the maximum heatmap slice)
+# third row shows the original image with the same slider as in the second row
+# additionally some meta information is printed
+# 
+# all heatmaps can be provided in the same order as X_in or will be generated if None
+# if None then the model arguments are required 
+# if the heatmap is provided then pred_hm_only does only change the colorbar
 def occlusion_interactive_plot(p_id, occ_size, occ_stride,
                                cnn, all_results, pat, X_in,
                                generate_model_name, num_models,
                                pat_dat,
                                pred_hm_only=True,
                                heatmaps = None):
+    # p_id: patient id
+    # occ_size: size of the occlusion window
+    # occ_stride: stride of the occlusion window (if None then occ_stride = occ_size)
+    # cnn: the cnn model (weights must not be loaded)
+    # all_results: the result table 
+    # pat: the patient ids of the images (same order as X_in)
+    # X_in: the images (same order as pat)
+    # generate_model_name: function to generate the model names
+    # num_models: number of models per fold
+    # pat_dat: the patient data table
+    # pred_hm_only: if True then the heatmap is only plotted for the predicted class
+    #               if False then the positive and negative heatmap is plotted
+    # heatmaps: if None then the heatmaps are generated, otherwise the heatmaps must be provided (same order as X_in)
+    
     p_ids = [p_id]
     (res_table, res_images, res_model_names) = gc.get_img_and_models(
         p_ids, results = all_results, pats = pat, imgs = X_in, 
