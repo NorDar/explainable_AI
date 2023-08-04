@@ -15,7 +15,8 @@ def gradcam_interactive_plot(p_id, vis_layers,
                              cnn, all_results, pat, X_in,
                              generate_model_name, num_models,
                              pat_dat,
-                             pred_hm_only=True):
+                             pred_hm_only=True, 
+                             heatmaps = None):
     p_ids = [p_id]
     (res_table, res_images, res_model_names) = gc.get_img_and_models(
         p_ids, results = all_results, pats = pat, imgs = X_in, 
@@ -44,16 +45,19 @@ def gradcam_interactive_plot(p_id, vis_layers,
         cmap = "bwr"
         hm_positive=False
     
-            
-    heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
-        img = np.expand_dims(res_images[0], axis = 0), 
-        cnn = cnn,
-        model_names = res_model_names[0],
-        layers = vis_layers[3],
-        model_mode = "mean",
-        pred_index = 0,
-        invert_hm = invert_hm,
-        gcpp_hm = gcpp_hm)
+    if heatmaps is None:        
+        heatmap, resized_img, max_hm_slice, hm_mean_std = gc.multi_models_grad_cam_3d(
+            img = np.expand_dims(res_images[0], axis = 0), 
+            cnn = cnn,
+            model_names = res_model_names[0],
+            layers = vis_layers[3],
+            model_mode = "mean",
+            pred_index = 0,
+            invert_hm = invert_hm,
+            gcpp_hm = gcpp_hm)
+    else:
+        heatmap = heatmaps[np.argwhere(pat == p_id).squeeze()]
+        resized_img = res_images[0]
 
     slices = np.unravel_index(heatmap.argmax(), heatmap.shape)
     print("max slices:", (slices[2], slices[0], slices[1]))
@@ -108,7 +112,8 @@ def occlusion_interactive_plot(p_id, occ_size, occ_stride,
                                cnn, all_results, pat, X_in,
                                generate_model_name, num_models,
                                pat_dat,
-                               pred_hm_only=True):
+                               pred_hm_only=True,
+                               heatmaps = None):
     p_ids = [p_id]
     (res_table, res_images, res_model_names) = gc.get_img_and_models(
         p_ids, results = all_results, pats = pat, imgs = X_in, 
@@ -137,15 +142,19 @@ def occlusion_interactive_plot(p_id, occ_size, occ_stride,
         cmap = "bwr"
         hm_positive=False   
     
-    (heatmap, resized_img, max_hm_slice, hm_mean_std) =  oc.volume_occlusion(
-        volume = res_images, 
-        res_tab = res_table, 
-        occlusion_size = np.array(occ_size), 
-        cnn = cnn,
-        invert_hm=invert_hm,
-        both_directions=both_directions,
-        model_names = res_model_names[0],
-        occlusion_stride = occ_stride)
+    if heatmaps is None:
+        (heatmap, resized_img, max_hm_slice, hm_mean_std) =  oc.volume_occlusion(
+            volume = res_images, 
+            res_tab = res_table, 
+            occlusion_size = np.array(occ_size), 
+            cnn = cnn,
+            invert_hm=invert_hm,
+            both_directions=both_directions,
+            model_names = res_model_names[0],
+            occlusion_stride = occ_stride)
+    else:
+        heatmap = heatmaps[np.argwhere(pat == p_id).squeeze()]
+        resized_img = res_images[0]
     
     slices = np.unravel_index(heatmap.argmax(), heatmap.shape)
     print("max slices:", (slices[2], slices[0], slices[1]))
