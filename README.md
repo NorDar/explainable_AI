@@ -7,16 +7,16 @@ Heatmaps for the model predictions are generated using the [Grad-CAM](https://ar
 
 The models and heatmaps are generated based on the splits of the above mentioned paper and new splits. The new models on the paper splits are compared with the original ones to reproduce the achieved results. In order to generate heatmaps for each patient new 10 Fold splits are generated. Different model architectures are tested and compared:
 
-- andrea_split: splits and training as in paper 
-- 10Fold_sigmoid_V0: 10 stratifed (with outcome mrs > 2 or mrs <= 2) Folds trained with the last layer beeing activated with sigmoid (5 ensembles per split)
-- 10Fold_softmax_V0: same Folds as 10Fold_sigmoid_V0 but last layer activated with softmax (5 ensembles per split)
-- 10Fold_softmax_V1: new 10 Fold stratified (with mrs) and last layer activated with softmax (10 ensembles per split)
-- 10Fold_sigmoid_V1: same Folds as 10Fold_softmax_V1 and last layer activated with sigmoid (10 ensembles per split)
-- 10Fold_sigmoid_V2: 10 Fold binary stratified (mrs > or <= 2) other seed than V0, and last layer activated with sigmoid (5 ensembles per split)
-- 10Fold_sigmoid_V2f: same as 10Fold_sigmoid_V2 but with flatten Layer
-- 10Fold_signoid_V3: 10 Fold binary stratified (mrs > or <= 2) without TIA patients, other seed than V0 and V2 and last layer activated wih sigmoid (5 ensembles per split)
-
-The 10Fold_sigmoid_V0 version was trained twice to compare different initiallitations.  
+Version Name | Number of Folds | Stratification | Seed | Layer Connection | Activation Function | Number of Ensembles | Additional Information
+--- | --- | --- | --- | --- | --- | --- | ---
+andrea_split       | 6  | Random                 | ?   | Average Pooling Layer | sigmoid | 5  | same splits and training as in paper, only trained for split 6
+10Fold_sigmoid_V0  | 10 | binary (mrs > or <= 2) | 100 | Average Pooling Layer | sigmoid | 5  | twice trained with different seeds
+10Fold_softmax_V0  | 10 | binary (mrs > or <= 2) | 100 | Average Pooling Layer | softmax | 5  | same Folds as 10Fold_sigmoid_V0 
+10Fold_sigmoid_V1  | 10 | mrs                    | 999 | Average Pooling Layer | sigmoid | 10 |
+10Fold_softmax_V1  | 10 | mrs                    | 999 | Average Pooling Layer | softmax | 10 | same Folds as 10Fold_sigmoid_V1 
+10Fold_sigmoid_V2  | 10 | binary (mrs > or <= 2) | 500 | Average Pooling Layer | sigmoid | 5  |
+10Fold_sigmoid_V2f | 10 | binary (mrs > or <= 2) | 500 | Flatten Layer         | sigmoid | 5  | same Folds as 10Fold_sigmoid_V2 
+10Fold_sigmoid_V3  | 10 | binary (mrs > or <= 2) | 200 | Average Pooling Layer | sigmoid | 5  | without TIA patients
 
 All data, intermediate and final results are saved locally on a ZHAW server.
 
