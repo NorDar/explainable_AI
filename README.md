@@ -1,6 +1,6 @@
 # Explainable Deep Neural Networks for MRI Based Stroke Analysis
 
-This repository comprises code for generating, evaluating and visualizing models for binary stroke outcome predictions and is based on the paper [arXiv:2206.13302 "Deep transformation models for predicting functional outcome after acute ischemic stroke"](https://arxiv.org/abs/2206.13302) ([github code](https://github.com/LucasKook/dtm-usz-stroke)).
+This repository comprises code for generating, evaluating and visualizing models for binary stroke outcome predictions which are described here [arXiv:2206.13302 "Deep transformation models for predicting functional outcome after acute ischemic stroke"](https://arxiv.org/abs/2206.13302) (along with the code [github code](https://github.com/LucasKook/dtm-usz-stroke)).
 
 The goal is to explain the predictions of a binary stroke outcome model based on image data only. The model is trained on 3D MRI data (DWI-Images) of stroke patients and predicts the binary outcome of the modified Rankin Scale (mRS) at 90 days after stroke. The mRS is a scale from 0 to 6, where 0 means no symptoms and 6 means death. The model predicts whether the patient will have a good outcome (mRS <= 2) or a bad outcome (mRS > 2).  
 Heatmaps for the model predictions are generated using the [Grad-CAM](https://arxiv.org/abs/1610.02391) and 3D-Occlusion methods. 
