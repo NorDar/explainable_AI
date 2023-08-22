@@ -7,9 +7,9 @@ The goal of this project is to explain the predictions of a binary stroke outcom
 The models and heatmaps are trained and evaluatien with different data splits. First the results of the above mentioned papers were reproduced based on the 6th split of the above mentioned paper. In order to generate heatmaps for each patient new 10 folds cross validation (CV) splits are generated. The splits from the paper are randomly choosen and therefore not all patients are in a test set. Different model architectures are tested and compared:
 
 Different data folds and architectures are tested and compared. Fhe following table gives some information about the different implemented versions.
-*Number of Folds* and *Stratification* refer to the number of folds generated their stratification. *Seed* is the random seed used for splitting.
-*Layer Connection* refers to the connection between the convolutional and fully connected part of the neural network. *Activation Function* is the activation function used in the last layer.
-*Number of Ensembles* refers to the number of models trained for each split (total numbers of models = number of folds * number of ensembles). *Additional Information* gives some additional information about the model. 
+**Number of Folds** and **Stratification** refer to the number of folds generated their stratification. **Seed** is the random seed used for splitting.
+**Layer Connection** refers to the connection between the convolutional and fully connected part of the neural network. **Activation Function** is the activation function used in the last layer.
+**Number of Ensembles** refers to the number of models trained for each split (*total numbers of models = number of folds x number of ensembles*). **Additional Information** gives some additional information about the model. 
 
 Version Name | Number of Folds | Stratification | Seed | Layer Connection | Activation Function | Number of Ensembles | Additional Information
 --- | --- | --- | --- | --- | --- | --- | ---
