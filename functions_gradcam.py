@@ -141,7 +141,7 @@ def multi_layers_grad_cam_3d(img, model_3d, layers, mode = "mean",
         
     ## Normalize heatmap
     if normalize and gcpp_hm in ["last", "all"] and heatmap.max() != 0:
-        heatmap = ((heatmap - heatmap.min())/heatmap.max())
+        heatmap = ((heatmap - heatmap.min())/(heatmap.max()-heatmap.min()))
     elif normalize and gcpp_hm == "none" and heatmap.max() != 0:
         heatmap_min_max = [tf.math.reduce_min(heatmap), tf.math.reduce_max(heatmap)]
         heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
@@ -202,7 +202,7 @@ def multi_models_grad_cam_3d(img, cnn, model_names, layers,
         
     ## Normalize heatmap
     if normalize and gcpp_hm in ["last", "all"] and heatmap.max() != 0:
-        heatmap = ((heatmap - heatmap.min())/heatmap.max())
+        heatmap = ((heatmap - heatmap.min())/(heatmap.max()-heatmap.min()))
     elif normalize and gcpp_hm == "none" and heatmap.max() != 0:
         heatmap_min_max = [tf.math.reduce_min(heatmap), tf.math.reduce_max(heatmap)]
         heatmap_abs_max = tf.math.reduce_max(tf.math.abs(heatmap_min_max))
