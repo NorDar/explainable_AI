@@ -1,12 +1,13 @@
 # Explainable Deep Neural Networks for MRI Based Stroke Analysis
 
-This repository comprises code for generating, evaluating and visualizing models for binary stroke outcome predictions and is based on the paper [arXiv:2206.13302 "Deep transformation models for predicting functional outcome after acute ischemic stroke"](https://arxiv.org/abs/2206.13302) ([github code](https://github.com/LucasKook/dtm-usz-stroke)).
+This repository comprises code for generating, evaluating and visually explaining models for binary stroke outcome predictions which are described here [arXiv:2206.13302 "Deep transformation models for predicting functional outcome after acute ischemic stroke"](https://arxiv.org/abs/2206.13302) (along with the code [github code](https://github.com/LucasKook/dtm-usz-stroke)).  The model is trained on 3D MRI data (DWI-Images) of stroke patients and predicts the binary outcome of the modified Rankin Scale (mRS) at 90 days after stroke. The mRS is an ordinal scale from 0 to 6, where 0 means no symptoms and 6 means death. The model predicts whether the patient will have a good outcome (mRS <= 2) or a bad outcome (mRS > 2). 
 
-The goal is to explain the predictions of a binary stroke outcome model based on image data only. The model is trained on 3D MRI data (DWI-Images) of stroke patients and predicts the binary outcome of the modified Rankin Scale (mRS) at 90 days after stroke. The mRS is a scale from 0 to 6, where 0 means no symptoms and 6 means death. The model predicts whether the patient will have a good outcome (mRS <= 2) or a bad outcome (mRS > 2).  
-Heatmaps for the model predictions are generated using the [Grad-CAM](https://arxiv.org/abs/1610.02391) and 3D-Occlusion methods. 
+The goal of this project is to explain the predictions of a binary stroke outcome model based on image data only. We aim to du so by highlighting regions in the images that were crucial for the made prediction.  Heatmaps for the model predictions are generated using the [Grad-CAM](https://arxiv.org/abs/1610.02391) and 3D-Occlusion methods.
 
-The models and heatmaps are generated based on the splits of the above mentioned paper and new splits. The new models on the paper splits are compared with the original ones to reproduce the achieved results. In order to generate heatmaps for each patient new 10 Fold splits are generated. Different model architectures are tested and compared:
+The models and heatmaps are trained and evaluatien with different data splits. First the results of the above mentioned papers were reproduced based on the very same data splits as used in the above mentioned paper and then also with new data splits. In order to generate heatmaps for each patient new 10 Fold splits are generated WARUM???. Different model architectures are tested and compared:
 
+Fhe following table gives some information about different implemented models.  ERgÄNZEN
+For the binary outcome model we used either sigmoid or softmax as activation function in the last layer (see table below). 
 Version Name | Number of Folds | Stratification | Seed | Layer Connection | Activation Function | Number of Ensembles | Additional Information
 --- | --- | --- | --- | --- | --- | --- | ---
 andrea_split       | 6  | Random                 | ?   | Average Pooling Layer | sigmoid | 5  | same splits and training as in paper, only trained for split 6
@@ -22,7 +23,7 @@ All data, intermediate and final results are saved locally on a ZHAW server.
 
 ## Files
 
-### Data Preparation
+### 10 fold CV Preparation
 
 - `split_data.ipynb`: Split data into 10 Fold CV splits (8 as trainings, 1 as validation and 1 as test set).
 
