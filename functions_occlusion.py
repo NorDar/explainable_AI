@@ -128,7 +128,7 @@ def volume_occlusion(volume, res_tab,
         hm = heatmap_prob_sum / heatmap_occ_n # calculate average probability per voxel
         
         ## Get cutoff, invert heatmap if necessary and normalize
-        cut_off = res_tab["y_pred_model_" + model_name[-5:-3]][0]
+        cut_off = res_tab["y_pred_model_" + model_name[-4:-3]][0]
     
         if (res_tab["y_pred_class"][0] == 0 and invert_hm == "pred_class" and not both_directions) or (
             invert_hm == "never" and not both_directions): 
