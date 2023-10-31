@@ -26,7 +26,7 @@ def gradcam_interactive_plot(p_id, vis_layers,
                              pat_dat,
                              pred_hm_only=True, 
                              heatmaps = None):
-     # p_id: patient id
+    # p_id: patient id
     # vis_layers: the layers for which the heatmap is generated, should be last layer
     # cnn: the cnn model (weights must not be loaded)
     # all_results: the result table 

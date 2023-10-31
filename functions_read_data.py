@@ -169,7 +169,8 @@ def version_setup(DATA_DIR, version, model_version):
     # model_version: which model version to use
     
     if version == "andrea": ## for andrea
-        with h5py.File("/tf/notebooks/hezo/stroke_zurich/data/dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5", "r") as h5:
+        with h5py.File("/tf/notebooks/hezo/stroke_perfusion/data/dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5", "r") as h5:
+                       
             # with h5py.File(IMG_DIR2 + 'dicom-3d.h5', "r") as h5:
             # both images are the same
                 X_in = h5["X"][:]

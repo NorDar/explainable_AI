@@ -4,10 +4,11 @@ __pycache__/
 data/
 pictures/
 weights/
+model/
 
 # files
 *.jpg
-
+*.h5
 
 # Standard ignore for python projects ------------------------------------------
 

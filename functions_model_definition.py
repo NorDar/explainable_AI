@@ -5,7 +5,7 @@ import tensorflow_probability as tfp
 from tensorflow.keras.models import Sequential, Model
 
 
-# Define the 3d cnn model for binary stroke classification
+# Define the 3d cnn model for binary stroke classification      
 # Consists of 4 convolutional blocks, 1 fully connected block and 1 output layer
 def stroke_binary_3d(input_dim = (128, 128, 28,1), 
                      output_dim = 1,
