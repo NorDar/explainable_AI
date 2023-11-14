@@ -5,6 +5,7 @@ data/
 pictures/
 weights/
 model/
+classification_models_3D/
 
 # files
 *.jpg

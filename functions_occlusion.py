@@ -1,4 +1,9 @@
 import numpy as np
+import tensorflow as tf
+
+
+
+
 
 # Occlusion Iteration: 
 # Generatess all possible occlusions of a given size and stride for a given volume
@@ -177,4 +182,7 @@ def volume_occlusion(volume, res_tab,
     hm_mean_std = np.sqrt(np.mean(np.var(h_l, axis = 0)))
     
     return heatmap, volume, max_hm_slice, hm_mean_std
+
+
+
 

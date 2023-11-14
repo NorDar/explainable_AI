@@ -162,7 +162,7 @@ def cal_plot_data_prep(y_pred, y_test):
     return cal_plot_data
 
 # Plots a calibration plot for data created by cal_plot_data_prep
-def cal_plot(dat, x_vals, y_vals, lwr_vals, upr_vals, alpha = 1, show = True, col = "C0"):
+def cal_plot(dat, x_vals, y_vals, lwr_vals, upr_vals, alpha = 1, show = True, col = "C0", label = None):
     # dat: data created by cal_plot_data_prep
     # x_vals: column name of the x values
     # y_vals: column name of the y values
@@ -179,7 +179,8 @@ def cal_plot(dat, x_vals, y_vals, lwr_vals, upr_vals, alpha = 1, show = True, co
         data=dat, x=x_vals, y=y_vals, 
         marker="o",
         alpha = alpha,
-        color = col
+        color = col,
+        label = label
     )
 
     plt.plot([0, 1], [0, 1], c = "grey", linewidth = 2)
