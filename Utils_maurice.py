@@ -1,3 +1,17 @@
+
+from __future__ import print_function
+
+import numpy as np
+import ipywidgets as widgets
+
+from ipywidgets import interact, interactive, fixed, interact_manual, HBox, VBox, Layout, AppLayout
+from IPython.display import display
+from termcolor import colored
+
+import functions_occlusion as oc
+import functions_gradcam as gc
+import functions_plot_heatmap as phm
+
 import os 
 import pandas as pd
 import numpy as np
@@ -312,3 +326,281 @@ def read_and_split_img_data_andrea_maurice2(path_img, path_tab, path_splits, spl
 
       
     return (train_idx, valid_idx, test_idx, X, X_train, X_valid, X_test, X_tab_train, X_tab_valid, X_tab_test), (Y_train, Y_valid, Y_test), results, results2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Occlusion Heatmap Calculation:
+# Calculates the heatmap for a given volume and models
+# For each model, the heatmap is calculated and then averaged over all models
+#
+# Returns the heatmap, the original volume, the coordinates of the maximum heatmap 
+#  slice and the standard deviation of the heatmaps
+def volume_occlusion(volume, res_tab, 
+                     occlusion_size, 
+                     cnn, model_names,
+                     normalize = True,
+                     both_directions = False,
+                     invert_hm = "pred_class",
+                     model_mode = "mean",
+                     occlusion_stride = None,
+                     input_shape = (128,128,28,1)):
+    # volume: np array in shape of input_shape
+    # res_tab: dataframe with results of all models
+    # occlusion_size: scalar or 3 element array, if scalar, occlusion is cubic
+    # cnn: keras model
+    # model_names: list of model names, to load weights
+    # normalize: bool, if True, heatmap is normalized to [0,1] (after each model, and after averaging)
+    # both_directions: bool, if True, heatmap is calculated for positive and negative prediction impact, if False,
+    #           heatmap is cut off at the non-occluded prediction probability and only negative impact is shown
+    # invert_hm: string, one of ["pred_class", "always", "never"], if "pred_class", heatmap is inverted if
+    #           class 1 is predicted, if "always", heatmap is always inverted, if "never", heatmap is never inverted
+    # model_mode: string, one of ["mean", "median", "max"], defines how the heatmaps of the different models are combined
+    # occlusion_stride: scalar, stride of occlusion, if None, stride is set to minimum of occlusion_size
+    # input_shape: tuple, shape of input volume
+    
+    ## Check input
+    valid_modes = ["mean", "median", "max"]
+    if model_mode not in valid_modes:
+        raise ValueError("volume_occlusion: model_mode must be one of %r." % valid_modes)
+    
+    valid_inverts = ["pred_class", "always", "never"]
+    if invert_hm not in valid_inverts:
+        raise ValueError("volume_occlusion: invert_hm must be one of %r." % valid_inverts)
+
+    if not isinstance(model_names, list):
+        model_names = [model_names]
+    
+    volume = volume.reshape(input_shape)
+    
+    if len(occlusion_size) == 1:
+        occlusion_size = np.array([occlusion_size, occlusion_size, occlusion_size])
+    elif len(occlusion_size) != 3:
+        raise ValueError('occluson_size must be a scalar or a 3 element array')
+
+    if occlusion_stride is None:
+        occlusion_stride = np.min(occlusion_size)
+    elif any(occlusion_stride > occlusion_size):
+        raise ValueError('stride must be smaller or equal size')
+    
+    if any(occlusion_stride == occlusion_size):
+        if (not (volume.shape[0] / occlusion_size)[0].is_integer() or
+            not (volume.shape[1] / occlusion_size)[1].is_integer() or 
+            not (volume.shape[2] / occlusion_size)[2].is_integer()):
+            
+            raise ValueError('size does not work with this volume')
+    elif any(occlusion_stride != occlusion_size):
+        if (((volume.shape[0]-occlusion_size[0]) % occlusion_stride) != 0 or 
+            ((volume.shape[1]-occlusion_size[1]) % occlusion_stride) != 0 or
+            ((volume.shape[2]-occlusion_size[2]) % occlusion_stride) != 0):
+        
+            raise ValueError('shape and size do not match')
+    
+    ## loop over models
+    h_l = []
+    for model_name in model_names:
+        cnn.load_weights(model_name)
+        
+        heatmap_prob_sum = np.zeros((volume.shape[0], volume.shape[1], volume.shape[2]), np.float32)
+        heatmap_occ_n = np.zeros((volume.shape[0], volume.shape[1], volume.shape[2]), np.float32)
+        
+        ## Generate all possible occlusions
+        X = []
+        xyz = []
+        for n, (x, y, z, vol_float) in enumerate(oc.iter_occlusion(
+                volume, size = occlusion_size, stride = occlusion_stride)):
+            X.append(vol_float.reshape(volume.shape[0], volume.shape[1], volume.shape[2], 1))
+            xyz.append((x,y,z))
+        
+        X = np.array(X)
+        out = 1-sigmoid(cnn.predict(X))
+        out = out.squeeze()       
+
+        ## Add predictions to heatmap and count number of predictions per voxel
+        for i in range(len(xyz)):
+            x,y,z = xyz[i]
+            heatmap_prob_sum[x:x + occlusion_size[0], y:y + occlusion_size[1], z:z + occlusion_size[2]] += out[i]
+            heatmap_occ_n[x:x + occlusion_size[0], y:y + occlusion_size[1], z:z + occlusion_size[2]] += 1
+
+        hm = heatmap_prob_sum / heatmap_occ_n # calculate average probability per voxel
+        
+        ## Get cutoff, invert heatmap if necessary and normalize
+        cut_off = res_tab["y_pred_model_" + model_name[-4:-3]][0]
+    
+        if (res_tab["y_pred_class"][0] == 0 and invert_hm == "pred_class" and not both_directions) or (
+            invert_hm == "never" and not both_directions): 
+            hm[hm < cut_off] = cut_off
+        elif (res_tab["y_pred_class"][0] == 1 and invert_hm == "pred_class" and not both_directions) or (
+            invert_hm == "always" and not both_directions):
+            hm[hm > cut_off] = cut_off
+        elif both_directions:
+            hm = hm - cut_off
+        
+        if normalize and not both_directions:
+            hm = ((hm - hm.min())/(hm.max()-hm.min()))
+        elif normalize and both_directions:
+            hm_min_max = [np.min(hm), np.max(hm)]
+            hm_abs_max = np.max(np.abs(hm_min_max))
+            hm = hm / hm_abs_max
+        
+        h_l.append(hm)
+        
+    ## Average over all models
+    h_l = np.array(h_l)
+    h_l = np.expand_dims(h_l, axis = -1)
+    if model_mode == "mean":
+        heatmap = np.mean(h_l, axis = 0)
+    elif model_mode == "median":
+        heatmap = np.median(h_l, axis = 0)
+    elif model_mode == "max":
+        heatmap = np.max(h_l, axis = 0)
+        
+    if normalize and not both_directions:
+        heatmap = ((heatmap - heatmap.min())/(heatmap.max()-heatmap.min()))
+    elif normalize and both_directions:
+        heatmap_min_max = [np.min(heatmap), np.max(heatmap)]
+        heatmap_abs_max = np.max(np.abs(heatmap_min_max))
+        heatmap = heatmap / heatmap_abs_max
+        
+    if invert_hm == "pred_class" and res_tab["y_pred_class"][0] == 1:
+        heatmap = 1 - heatmap  
+    elif invert_hm == "always":
+        heatmap = 1 - heatmap
+        
+    ## Get maximum heatmap slice and standard deviation of heatmaps
+    target_shape = h_l.shape[:-1]
+    max_hm_slice = np.array(np.unravel_index(h_l.reshape(target_shape).reshape(len(h_l), -1).argmax(axis = 1), 
+                                             h_l.reshape(target_shape).shape[1:])).transpose()
+    hm_mean_std = np.sqrt(np.mean(np.var(h_l, axis = 0)))
+    
+    return heatmap, volume, max_hm_slice, hm_mean_std
+
+# generates a occlusion heatmap plot/slider for a given patient id
+# first row shows the average heatmap over each direction
+# second row shows a slider to select the heatmap slice (default is the maximum heatmap slice)
+# third row shows the original image with the same slider as in the second row
+# additionally some meta information is printed
+# 
+# all heatmaps can be provided in the same order as X_in or will be generated if None
+# if None then the model arguments are required 
+# if the heatmap is provided then pred_hm_only does only change the colorbar
+
+def occlusion_interactive_plot(p_id, occ_size, occ_stride,
+                               cnn, all_results, pat, X_in,
+                               generate_model_name, num_models,
+                               pat_dat,
+                               pred_hm_only=True,
+                               heatmaps = None):
+    # p_id: patient id
+    # occ_size: size of the occlusion window
+    # occ_stride: stride of the occlusion window (if None then occ_stride = occ_size)
+    # cnn: the cnn model (weights must not be loaded)
+    # all_results: the result table 
+    # pat: the patient ids of the images (same order as X_in)
+    # X_in: the images (same order as pat)
+    # generate_model_name: function to generate the model names
+    # num_models: number of models per fold
+    # pat_dat: the patient data table
+    # pred_hm_only: if True then the heatmap is only plotted for the predicted class
+    #               if False then the positive and negative heatmap is plotted
+    # heatmaps: if None then the heatmaps are generated, otherwise the heatmaps must be provided (same order as X_in)
+    
+    p_ids = [p_id]
+    (res_table, res_images, res_model_names) = gc.get_img_and_models(
+        p_ids, results = all_results, pats = pat, imgs = X_in, 
+        gen_model_name = generate_model_name,
+        num_models = num_models)
+    
+    print("patient id: ", res_table.p_id[0])
+    print("age: ", pat_dat[pat_dat["p_id"] == res_table.p_id[0]]["age"].values[0])
+    print("true mrs: ", res_table.mrs[0])
+    print("true class: ", res_table.unfavorable[0])
+    print(colored("pred class: "+str(res_table.y_pred_class[0]), 
+                'green' if res_table["pred_correct"][0] == True else 'red'))
+    print("pred prob (class 1): ", res_table.y_pred_trafo_avg[0])
+    print("Threshold: ", res_table.threshold[0])
+    print("pred uncertainty: ", res_table.y_pred_unc[0])
+    # print("heatmap unc. last layer: ", res_table.y_pred_unc[0])
+      
+    ## Generate heatmap
+    if pred_hm_only:
+        invert_hm = "pred_class"
+        both_directions = False
+        cmap = "jet"
+        hm_positive=True
+    else:
+        invert_hm = "never"
+        both_directions = True
+        cmap = "bwr"
+        hm_positive=False   
+    
+    if heatmaps is None:
+        (heatmap, resized_img, max_hm_slice, hm_mean_std) =  volume_occlusion(
+            volume = res_images, 
+            res_tab = res_table, 
+            occlusion_size = np.array(occ_size), 
+            cnn = cnn,
+            invert_hm=invert_hm,
+            both_directions=both_directions,
+            model_names = res_model_names[0],
+            occlusion_stride = occ_stride)
+    else:
+        heatmap = heatmaps[np.argwhere(pat == p_id).squeeze()]
+        resized_img = res_images[0]
+    
+    slices = np.unravel_index(heatmap.argmax(), heatmap.shape)
+    print("max slices:", (slices[2], slices[0], slices[1]))
+    
+    ## Plot Heatmap Average
+    phm.plot_heatmap(np.squeeze(resized_img, axis=-1), np.squeeze(heatmap, axis=-1),
+                version = "overlay",
+                mode = "avg",
+                hm_colormap=cmap,
+                hm_positive=hm_positive,
+                colorbar=True)
+
+    ## Plot Heatmap Slider
+    def slicer(axi_slider, cor_slider, sag_slider):
+        phm.plot_heatmap(np.squeeze(resized_img, axis=-1), np.squeeze(heatmap, axis=-1),
+                version = "overlay",
+                mode = "def",
+                slices = (cor_slider,sag_slider,axi_slider),
+                hm_colormap=cmap,
+                hm_positive=hm_positive,
+                colorbar=True)
+        phm.plot_heatmap(np.squeeze(resized_img, axis=-1), np.squeeze(heatmap, axis=-1),
+                version = "original",
+                mode = "def",
+                slices=(cor_slider,sag_slider,axi_slider),
+                hm_colormap=cmap,
+                hm_positive=hm_positive,
+                slice_line=True)
+
+    w=interactive(
+        slicer, 
+        axi_slider=widgets.IntSlider(value=slices[2],min=0,max=27,step=1), 
+        cor_slider=widgets.IntSlider(value=slices[0],min=0,max=127,step=1), 
+        sag_slider=widgets.IntSlider(value=slices[1],min=0,max=127,step=1))
+
+    slider_layout = Layout(display='flex', flex_flow='row', 
+                        justify_content='space-between', align_items='center',
+                        width='9.2in')
+    images_layout = Layout(display='flex', flex_flow='row', 
+                        justify_content='space-between', align_items='center',
+                        width='15', height='15')
+
+    display(VBox([
+        HBox([w.children[0],w.children[1], w.children[2]], layout=slider_layout),
+        HBox([w.children[3]], layout=images_layout)
+    ]))      
+    w.update()
