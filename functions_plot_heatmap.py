@@ -360,7 +360,7 @@ def plot_heatmaps_avg_max_org(pat_data, res_table, res_images, heatmaps,
         heatmap = heatmaps[j]
         resized_img = res_images[j]
 
-        plot_heatmap(resized_img, heatmap,
+        plot_heatmap(np.squeeze(resized_img, axis=-1), np.squeeze(heatmap, axis=-1),
                 version = "overlay",
                 mode = "avg",
                 hm_colormap=cmap,
@@ -371,18 +371,18 @@ def plot_heatmaps_avg_max_org(pat_data, res_table, res_images, heatmaps,
 
         plt.gcf().text(0.1, text_pos[-1], "Max Heatmap Slice", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-        plot_heatmap(resized_img, heatmap,
+        plot_heatmap(np.squeeze(resized_img, axis=-1), np.squeeze(heatmap, axis=-1),
                     version = "overlay",
                     mode = "max",
                     hm_colormap=cmap,
                     hm_positive=hm_positive,
                     colorbar=True,
                     add_plot = (1,num_rows),
-                    show = False)
+                    show = False)       
 
         plt.gcf().text(0.1, start_text+(plot_at_end/num_rows)/2, "Original", 
                        horizontalalignment='center', verticalalignment='center', fontsize=14, rotation = 90)
-        plot_heatmap(resized_img, heatmap,
+        plot_heatmap(np.squeeze(resized_img, axis=-1), np.squeeze(heatmap, axis=-1),
                     version = "original",
                     mode = "max",
                     orig_max = True,

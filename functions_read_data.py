@@ -238,3 +238,61 @@ def dir_setup(DIR, version, model_version, hm_type = "gc", ending = "_predcl"):
 
 # X_in = np.array([normalize(img) for img in X_in])
 # print(X_in.shape, X_in.min(), X_in.max(), X_in.mean(), X_in.std())
+
+
+#newly created by Maurice
+def split_data_tabular(id_tab, X, fold):    
+    
+    with h5py.File('/tf/notebooks/hezo/stroke_perfusion/data/dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5', "r") as h5:
+        pat = h5["pat"][:]
+
+    # already normalized
+    dat = pd.read_csv("/tf/notebooks/hezo/stroke_perfusion/data/baseline_data_zurich_prepared.csv", sep = ",")    
+
+    ## extract X and Y and split into train, val, test
+    n = []
+    for p in pat:
+        if p in dat.p_id.values:
+            n.append(p)
+    n = len(n)
+    X_tab = np.zeros((n, 13))
+
+    i = 0
+    for j, p in enumerate(pat):
+        if p in dat.p_id.values:
+            k = np.where(dat.p_id.values == p)[0]
+            X_tab[i,:] = dat.loc[k,["age", "sexm", "nihss_baseline", "mrs_before",
+                                    "stroke_beforey", "tia_beforey", "ich_beforey", 
+                                    "rf_hypertoniay", "rf_diabetesy", "rf_hypercholesterolemiay", 
+                                    "rf_smokery", "rf_atrial_fibrillationy", "rf_chdy"]]
+
+            i += 1    
+        
+    # id_tab: table with patient ids and folds
+    # X: image data
+    # fold: which fold to use (0-9)
+    
+    # define indices of train, val, test
+    train_idx_tab = id_tab[id_tab["fold" + str(fold)] == "train"]
+    valid_idx_tab = id_tab[id_tab["fold" + str(fold)] == "val"]
+    test_idx_tab = id_tab[id_tab["fold" + str(fold)] == "test"]
+    
+    # for X and y it is not the same, because X is defined for all valid patients,
+    # but id_tab is only defined for patients with a stroke (no tia) in V3.
+    # In V0, V1 and V2 X and id_tab are the same.
+    
+    # define data
+    X_train = X[train_idx_tab.p_idx.to_numpy() - 1]
+    y_train = id_tab["unfavorable"].to_numpy()[train_idx_tab.index.to_numpy()]
+    
+    X_valid = X[valid_idx_tab.p_idx.to_numpy() - 1]
+    y_valid = id_tab["unfavorable"].to_numpy()[valid_idx_tab.index.to_numpy()]
+    
+    X_test = X[test_idx_tab.p_idx.to_numpy() - 1]
+    y_test = id_tab["unfavorable"].to_numpy()[test_idx_tab.index.to_numpy()]
+    
+    X_train_tab = X_tab[train_idx_tab.p_idx.to_numpy() - 1]
+    X_valid_tab = X_tab[valid_idx_tab.p_idx.to_numpy() - 1]
+    X_test_tab = X_tab[test_idx_tab.p_idx.to_numpy() - 1] 
+           
+    return (X_train, X_valid, X_test),(X_train_tab, X_valid_tab, X_test_tab), (y_train, y_valid, y_test)
