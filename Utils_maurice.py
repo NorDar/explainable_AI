@@ -1,6 +1,22 @@
 
 from __future__ import print_function
 
+
+import os
+import tensorflow as tf
+from tensorflow import keras
+from keras.utils import to_categorical
+
+
+#ontram functions
+from k_ontram_functions.ontram import ontram
+from k_ontram_functions.ontram_loss import ontram_loss
+from k_ontram_functions.ontram_metrics import ontram_acc, ontram_auc
+from k_ontram_functions.ontram_predict import predict_ontram, get_parameters
+
+
+
+
 import numpy as np
 import ipywidgets as widgets
 
@@ -604,3 +620,176 @@ def occlusion_interactive_plot(p_id, occ_size, occ_stride,
         HBox([w.children[3]], layout=images_layout)
     ]))      
     w.update()
+
+
+
+
+
+##########################################################################################
+
+def volume_occlusion_tabular(volume, res_tab, tabular_df,
+                     occlusion_size, 
+                     model_names,
+                     normalize = True,
+                     both_directions = False,
+                     invert_hm = "pred_class",
+                     model_mode = "mean",
+                     occlusion_stride = None,
+                     input_shape = (128,128,28,1)):
+    # volume: np array in shape of input_shape
+    # res_tab: dataframe with results of all models
+    # occlusion_size: scalar or 3 element array, if scalar, occlusion is cubic
+    # cnn: keras model
+    # model_names: list of model names, to load weights
+    # normalize: bool, if True, heatmap is normalized to [0,1] (after each model, and after averaging)
+    # both_directions: bool, if True, heatmap is calculated for positive and negative prediction impact, if False,
+    #           heatmap is cut off at the non-occluded prediction probability and only negative impact is shown
+    # invert_hm: string, one of ["pred_class", "always", "never"], if "pred_class", heatmap is inverted if
+    #           class 1 is predicted, if "always", heatmap is always inverted, if "never", heatmap is never inverted
+    # model_mode: string, one of ["mean", "median", "max"], defines how the heatmaps of the different models are combined
+    # occlusion_stride: scalar, stride of occlusion, if None, stride is set to minimum of occlusion_size
+    # input_shape: tuple, shape of input volume
+    
+    ## Check input
+    valid_modes = ["mean", "median", "max"]
+    if model_mode not in valid_modes:
+        raise ValueError("volume_occlusion: model_mode must be one of %r." % valid_modes)
+    
+    valid_inverts = ["pred_class", "always", "never"]
+    if invert_hm not in valid_inverts:
+        raise ValueError("volume_occlusion: invert_hm must be one of %r." % valid_inverts)
+
+    if not isinstance(model_names, list):
+        model_names = [model_names]
+    
+    volume = volume.reshape(input_shape)
+    
+    if len(occlusion_size) == 1:
+        occlusion_size = np.array([occlusion_size, occlusion_size, occlusion_size])
+    elif len(occlusion_size) != 3:
+        raise ValueError('occluson_size must be a scalar or a 3 element array')
+
+    if occlusion_stride is None:
+        occlusion_stride = np.min(occlusion_size)
+    elif any(occlusion_stride > occlusion_size):
+        raise ValueError('stride must be smaller or equal size')
+    
+    if any(occlusion_stride == occlusion_size):
+        if (not (volume.shape[0] / occlusion_size)[0].is_integer() or
+            not (volume.shape[1] / occlusion_size)[1].is_integer() or 
+            not (volume.shape[2] / occlusion_size)[2].is_integer()):
+            
+            raise ValueError('size does not work with this volume')
+    elif any(occlusion_stride != occlusion_size):
+        if (((volume.shape[0]-occlusion_size[0]) % occlusion_stride) != 0 or 
+            ((volume.shape[1]-occlusion_size[1]) % occlusion_stride) != 0 or
+            ((volume.shape[2]-occlusion_size[2]) % occlusion_stride) != 0):
+        
+            raise ValueError('shape and size do not match')
+    
+    ## loop over models
+    h_l = []
+    for model_name in model_names:
+        input_dim = (128, 128, 28, 1)
+        output_dim = 1
+        batch_size = 6
+        C = 2 
+
+        mbl = img_model_linear_final(input_dim, output_dim)
+        mls = mod_linear_shift(13)
+        cnn = ontram(mbl, mls)             
+
+        cnn.compile(optimizer=keras.optimizers.Adam(learning_rate=5*1e-5),
+                                        loss=ontram_loss(C, batch_size),
+                                        metrics=[ontram_acc(C, batch_size)])
+
+        cnn.load_weights(model_name)
+        
+        heatmap_prob_sum = np.zeros((volume.shape[0], volume.shape[1], volume.shape[2]), np.float32)
+        heatmap_occ_n = np.zeros((volume.shape[0], volume.shape[1], volume.shape[2]), np.float32)
+        
+        ## Generate all possible occlusions
+        X = []
+        xyz = []
+        for n, (x, y, z, vol_float) in enumerate(oc.iter_occlusion(
+                volume, size = occlusion_size, stride = occlusion_stride)):
+            X.append(vol_float.reshape(volume.shape[0], volume.shape[1], volume.shape[2], 1))
+            xyz.append((x,y,z))
+        
+        X = np.array(X)
+
+
+        filtered_df = tabular_df[tabular_df['patient_id'] == res_tab['p_id'][0]].drop('patient_id', axis=1).values
+        X_tab_occ = np.tile(filtered_df, (len(X), 1))
+
+        occ_dataset_pred = ((X, X_tab_occ))
+        preds = cnn.predict(occ_dataset_pred)
+        out = 1-sigmoid(preds[:,0]-preds[:,1])
+                
+        #occ_data = tf.data.Dataset.from_tensor_slices((X, X_tab_occ))
+        #occ_labels = tf.data.Dataset.from_tensor_slices((to_categorical(res_tab['unfavorable'].iloc[0].repeat(len(X)), num_classes = 2)))
+        #occ_loader = tf.data.Dataset.zip((occ_data, occ_labels))
+        #occ_dataset_pred = (occ_loader.batch(len(X)))       
+        #out = predict_ontram(cnn, data = occ_dataset_pred)['pdf'][:,1]
+
+        #out = 1-sigmoid(cnn.predict((X, X_tab_occ)))
+        #out = out.squeeze()       
+
+        ## Add predictions to heatmap and count number of predictions per voxel
+        for i in range(len(xyz)):
+            x,y,z = xyz[i]
+            heatmap_prob_sum[x:x + occlusion_size[0], y:y + occlusion_size[1], z:z + occlusion_size[2]] += out[i]
+            heatmap_occ_n[x:x + occlusion_size[0], y:y + occlusion_size[1], z:z + occlusion_size[2]] += 1
+
+        hm = heatmap_prob_sum / heatmap_occ_n # calculate average probability per voxel
+        
+        ## Get cutoff, invert heatmap if necessary and normalize
+        cut_off = res_tab["y_pred_model_" + model_name[-4:-3]][0]
+    
+        if (res_tab["y_pred_class"][0] == 0 and invert_hm == "pred_class" and not both_directions) or (
+            invert_hm == "never" and not both_directions): 
+            hm[hm < cut_off] = cut_off
+        elif (res_tab["y_pred_class"][0] == 1 and invert_hm == "pred_class" and not both_directions) or (
+            invert_hm == "always" and not both_directions):
+            hm[hm > cut_off] = cut_off
+        elif both_directions:
+            hm = hm - cut_off
+        
+        if normalize and not both_directions:
+            hm = ((hm - hm.min())/(hm.max()-hm.min()))
+        elif normalize and both_directions:
+            hm_min_max = [np.min(hm), np.max(hm)]
+            hm_abs_max = np.max(np.abs(hm_min_max))
+            hm = hm / hm_abs_max
+        
+        h_l.append(hm)
+        
+    ## Average over all models
+    h_l = np.array(h_l)
+    h_l = np.expand_dims(h_l, axis = -1)
+    if model_mode == "mean":
+        heatmap = np.mean(h_l, axis = 0)
+    elif model_mode == "median":
+        heatmap = np.median(h_l, axis = 0)
+    elif model_mode == "max":
+        heatmap = np.max(h_l, axis = 0)
+        
+    if normalize and not both_directions:
+        heatmap = ((heatmap - heatmap.min())/(heatmap.max()-heatmap.min()))
+    elif normalize and both_directions:
+        heatmap_min_max = [np.min(heatmap), np.max(heatmap)]
+        heatmap_abs_max = np.max(np.abs(heatmap_min_max))
+        heatmap = heatmap / heatmap_abs_max
+        
+    if invert_hm == "pred_class" and res_tab["y_pred_class"][0] == 1:
+        heatmap = 1 - heatmap  
+    elif invert_hm == "always":
+        heatmap = 1 - heatmap
+        
+    ## Get maximum heatmap slice and standard deviation of heatmaps
+    target_shape = h_l.shape[:-1]
+    max_hm_slice = np.array(np.unravel_index(h_l.reshape(target_shape).reshape(len(h_l), -1).argmax(axis = 1), 
+                                             h_l.reshape(target_shape).shape[1:])).transpose()
+    hm_mean_std = np.sqrt(np.mean(np.var(h_l, axis = 0)))
+    
+    return heatmap, volume, max_hm_slice, hm_mean_std

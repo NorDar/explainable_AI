@@ -262,9 +262,9 @@ def split_data_tabular(id_tab, X, fold):
         if p in dat.p_id.values:
             k = np.where(dat.p_id.values == p)[0]
             X_tab[i,:] = dat.loc[k,["age", "sexm", "nihss_baseline", "mrs_before",
-                                    "stroke_beforey", "tia_beforey", "ich_beforey", 
-                                    "rf_hypertoniay", "rf_diabetesy", "rf_hypercholesterolemiay", 
-                                    "rf_smokery", "rf_atrial_fibrillationy", "rf_chdy"]]
+                                   "stroke_beforey", "tia_beforey", "ich_beforey", 
+                                   "rf_hypertoniay", "rf_diabetesy", "rf_hypercholesterolemiay", 
+                                   "rf_smokery", "rf_atrial_fibrillationy", "rf_chdy"]]
 
             i += 1    
         
@@ -296,3 +296,67 @@ def split_data_tabular(id_tab, X, fold):
     X_test_tab = X_tab[test_idx_tab.p_idx.to_numpy() - 1] 
            
     return (X_train, X_valid, X_test),(X_train_tab, X_valid_tab, X_test_tab), (y_train, y_valid, y_test)
+
+
+
+
+#### graveyard
+
+
+def split_data_tabular_test():    
+    with h5py.File('/tf/notebooks/hezo/stroke_perfusion/data/dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5', "r") as h5:
+        pat = h5["pat"][:]
+
+    # already normalized
+    dat = pd.read_csv("/tf/notebooks/hezo/stroke_perfusion/data/baseline_data_zurich_prepared.csv", sep=",")    
+
+    ## extract X and Y and split into train, val, test
+    n = []
+    for p in pat:
+        if p in dat.p_id.values:
+            n.append(p)
+    n = len(n)
+    X_tab = np.zeros((n, 14))  # Increased the number of columns to accommodate patient ID
+
+    i = 0
+    for j, p in enumerate(pat):
+        if p in dat.p_id.values:
+            k = np.where(dat.p_id.values == p)[0]
+            X_tab[i, :-1] = dat.loc[k, ["age", "sexm", "nihss_baseline", "mrs_before",
+                                        "stroke_beforey", "tia_beforey", "ich_beforey", 
+                                        "rf_hypertoniay", "rf_diabetesy", "rf_hypercholesterolemiay", 
+                                        "rf_smokery", "rf_atrial_fibrillationy", "rf_chdy"]].values
+            X_tab[i, -1] = p  # Add patient ID to the last column
+            i += 1
+    
+    # Convert NumPy array to DataFrame
+    columns = ["age", "sexm", "nihss_baseline", "mrs_before",
+               "stroke_beforey", "tia_beforey", "ich_beforey", 
+               "rf_hypertoniay", "rf_diabetesy", "rf_hypercholesterolemiay", 
+               "rf_smokery", "rf_atrial_fibrillationy", "rf_chdy", "patient_id"]
+    df_result = pd.DataFrame(X_tab, columns=columns)
+    
+    return df_result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

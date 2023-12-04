@@ -183,6 +183,3 @@ def volume_occlusion(volume, res_tab,
     
     return heatmap, volume, max_hm_slice, hm_mean_std
 
-
-
-
