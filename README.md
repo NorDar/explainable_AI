@@ -6,10 +6,9 @@ The images are represented by 3D-DWI acquired within 3 days of hospital admissio
 
 The binary outcome is prepresented by a dichotomized modified Rankin Scale (mRS) at 90 days after stroke. 
  
- ## Introduction
+ ## Methods (to do)
 
-- todo
-- explain CNN and attributon maps 
+- explain and introduce CNN and attributon maps 
 
 ## Model Fit
 
@@ -50,10 +49,11 @@ The binary outcome is prepresented by a dichotomized modified Rankin Scale (mRS)
     - create .png, .pdf for all patients  
     - visualize different types heatmaps (max, average, ....)
 
-### Key-changes
+### Key-changes:
 
 - `volume_occlusion_tabular()`
-    - extend `volume_occlusion()` function to include tabular data in the prediction of occluded images
+    - extend `volume_occlusion()` function to include tabular data for the creation of occlusion based heatmaps
+
 
 
 
