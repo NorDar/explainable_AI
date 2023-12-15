@@ -6,5 +6,7 @@ keras
 ipywidgets
 ipython
 scipy
-matplotlib
+scikit-learn
 scikit-image
+matplotlib
+seaborn
