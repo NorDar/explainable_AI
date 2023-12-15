@@ -7,6 +7,10 @@ weights/
 model/
 classification_models_3D/
 
+# VS-Code
+.devcontainer/*
+*.code-workspace
+
 # files
 *.jpg
 *.h5
