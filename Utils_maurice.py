@@ -1,25 +1,14 @@
 
-from __future__ import print_function
-
-
-import os
-import tensorflow as tf
-from tensorflow import keras
-from keras.utils import to_categorical
+#from __future__ import print_function # TODO: Check if can be removed
 
 
 #ontram functions
 from k_ontram_functions.ontram import ontram
 from k_ontram_functions.ontram_loss import ontram_loss
-from k_ontram_functions.ontram_metrics import ontram_acc, ontram_auc
-from k_ontram_functions.ontram_predict import predict_ontram, get_parameters
+from k_ontram_functions.ontram_metrics import ontram_acc
 
 
-
-
-import numpy as np
 import ipywidgets as widgets
-
 from ipywidgets import interact, interactive, fixed, interact_manual, HBox, VBox, Layout, AppLayout
 from IPython.display import display
 from termcolor import colored
@@ -28,24 +17,14 @@ import functions_occlusion as oc
 import functions_gradcam as gc
 import functions_plot_heatmap as phm
 
-import os 
 import pandas as pd
 import numpy as np
 import h5py
-import pickle as pkl
 
-#import functions_read_data as rdat
-# Tensorflow/Keras
-import tensorflow as tf
-import time
 from tensorflow import keras
-from tensorflow.keras import layers
-import pickle as pkl
 
-from keras.utils import to_categorical
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
+# from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard # TODO: Why is this here?
 
-from tensorflow.keras.callbacks import ModelCheckpoint
 
 def read_and_split_img_data_andrea_maurice(path_img, path_tab, path_splits, split, check_print = True):   
     # path_img: path to image data
@@ -206,7 +185,7 @@ def img_model_linear_final(input_shape, output_shape, activation = "linear"):
     x = keras.layers.MaxPooling3D(pool_size=(2, 2, 2))(x)
 
     # cnn to flat connection
-    x = layers.GlobalAveragePooling3D()(x) 
+    x = keras.layers.GlobalAveragePooling3D()(x) 
     
     # flat block
     x = keras.layers.Dense(128, activation = 'relu')(x)
