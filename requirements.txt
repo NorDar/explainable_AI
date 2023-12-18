@@ -1,8 +1,6 @@
 pandas
 numpy
 h5py
-tensorflow
-keras
 ipywidgets
 ipython
 scipy

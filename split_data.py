@@ -30,12 +30,12 @@ def load_transform_dataset(
         pat = h5["pat"][:]
 
     X_in = np.expand_dims(X_in, axis = 4)
-    logging.info("image shape in: ", X_in.shape)
+    logging.info(f"image shape in: {X_in.shape}")
     logging.info(f"image min: {X_in.min()}, max: {X_in.max()}, mean: {X_in.mean()}, std: {X_in.std()}")
 
     # Read tabular data
     dat = pd.read_csv(tabular_input_path, sep=",")
-    logging.info("tabular shape in: ", dat.shape)
+    logging.info(f"tabular shape in: {dat.shape}")
 
     # Get original data    
     n = []
@@ -73,9 +73,9 @@ def load_transform_dataset(
     X = X.squeeze()
     X = np.float32(X)
 
-    logging.info("X img out shape: ", X.shape)
-    logging.info("X tab out shape: ", X_tab.shape)
-    logging.info("Y mrs out shape: ", Y_mrs.shape)
+    logging.info(f"X img out shape: {X.shape}")
+    logging.info(f"X tab out shape: {X_tab.shape}")
+    logging.info(f"Y mrs out shape: {Y_mrs.shape}")
     if non_matched_patients:
         logging.info(f"{len(non_matched_patients)} patients were in the images but not in the tabular data and thus excluded.")
         logging.debug("Patients that were not added:")
@@ -139,7 +139,7 @@ def load_transform_dataset(
         logging.error(f"Split version '{split_version}' is not in {split_dict}. We quit this now.")
         raise ValueError(f"Split version '{split_version}' is not in {split_dict}.")
     else:
-        logging.info(f"Using random seed for split '{split_version}: {split_version.get(split_version)}'")
+        logging.info(f"Using random seed for split '{split_version}: {split_dict.get(split_version)}'")
     
     
     skf = StratifiedKFold(n_splits=n_splits, 
@@ -244,13 +244,13 @@ def main():
     # should only non TIA (transient ischemic attack) patients be included?
     only_non_tia = True
 
-    IMG_DIR = "/tf/notebooks/hezo/stroke_perfusion/data/"
+    IMG_DIR = "/host-homes/hezo/stroke_perfusion/data/"
     RAW_TABULAR = IMG_DIR + 'baseline_data_zurich_prepared.csv'
     RAW_IMAGES = IMG_DIR + 'dicom_2d_192x192x3_clean_interpolated_18_02_2021_preprocessed2.h5'
 
-    OUTPUT_DIR = "/tf/notebooks/schnemau/xAI_stroke_3d/data/"
-    TRANSFORMED_TABULAR = f"{OUTPUT_DIR}{N_SPLITS}Fold_ids_{SPLIT_VERSION}.csv"
-    TRANSFORMED_IMAGES = f"{OUTPUT_DIR}prepocessed_dicom_3d.npy"
+    OUTPUT_DIR = "/home/dari/explainable_AI/data/"
+    TRANSFORMED_TABULAR = f"{OUTPUT_DIR}{N_SPLITS}Fold_ids_{SPLIT_VERSION}-TEST.csv"
+    TRANSFORMED_IMAGES = f"{OUTPUT_DIR}prepocessed_dicom_3d-TEST.npy"
 
     relevant_features = ["age", "sexm", "nihss_baseline", "mrs_before",
                         "stroke_beforey", "tia_beforey", "ich_beforey", 
@@ -262,8 +262,7 @@ def main():
         image_input_path=RAW_IMAGES, 
         tabular_output_path=TRANSFORMED_TABULAR,
         image_output_path=TRANSFORMED_IMAGES,
-        only_non_tia=only_non_tia, 
-        output_dir=OUTPUT_DIR,
+        only_non_tia=only_non_tia,
         relevant_features=relevant_features,
         favorable_mrs=[0,1,2],
         n_splits=N_SPLITS,
