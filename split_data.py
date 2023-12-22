@@ -1,6 +1,5 @@
 from typing import List, Tuple
 import logging
-import h5py
 import pandas as pd
 import numpy as np
 
@@ -9,6 +8,11 @@ import seaborn as sns
 
 from sklearn.model_selection import StratifiedKFold
 
+from functions_data_handler import read_raw_h5
+
+# ----------------------------
+# Refactor of split_data.ipynb
+# ----------------------------
 
 def load_transform_dataset(
         tabular_input_path:str,
@@ -22,12 +26,8 @@ def load_transform_dataset(
         split_version:str,
         ) -> None:
     
-    # Reading the images
-    with h5py.File(image_input_path, "r") as h5:
-        X_in = h5["X"][:]
-        Y_img = h5["Y_img"][:]
-        Y_pat = h5["Y_pat"][:]
-        pat = h5["pat"][:]
+    # Reading the raw images
+    X_in, _, Y_pat, pat = read_raw_h5(path=image_input_path)
 
     X_in = np.expand_dims(X_in, axis = 4)
     logging.info(f"image shape in: {X_in.shape}")
@@ -192,11 +192,7 @@ def validate_transformed_data(
     X = np.load(image_output_path)
 
     # load the raw data
-    with h5py.File(image_input_path, "r") as h5:
-        X_in = h5["X"][:]
-        _ = h5["Y_img"][:]
-        _ = h5["Y_pat"][:]
-        pat = h5["pat"][:]
+    X_in, _, _, pat = read_raw_h5(path=image_input_path)
     
 
     index1 = id_tab[id_tab.p_id == patient_id].p_idx.values[0] -1
